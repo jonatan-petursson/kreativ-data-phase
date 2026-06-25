@@ -1,0 +1,13 @@
+{
+  "name": "phase-wheel",
+  "version": "1.0.0",
+  "description": "Phase Wheel — a self-contained interactive timer dial.",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler pages deploy public --project-name=phase-wheel",
+    "dev": "wrangler pages dev public"
+  },
+  "devDependencies": {
+    "wrangler": "^3"
+  }
+}

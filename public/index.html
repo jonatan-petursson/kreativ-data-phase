@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Phase Wheel</title>
+<style>
+  :root{
+    --bg:#f6f5f2; --surface:#ffffff; --text:#1d1c24; --muted:#6c6979; --hint:#9a97a8;
+    --border:rgba(0,0,0,.12); --accent:#5750c9; --accent-soft:rgba(87,80,201,.12);
+    --shadow:0 10px 34px rgba(20,18,40,.16);
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --sans:"Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#131218;--surface:#1c1b25;--text:#ece9f1;--muted:#9b97ad;--hint:#6c6880;
+          --border:rgba(255,255,255,.13);--accent:#8b83ef;--accent-soft:rgba(139,131,239,.18);
+          --shadow:0 10px 34px rgba(0,0,0,.5)}
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .app{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .dial{width:640px;max-width:94vw}
+  .dial svg{display:block;width:100%;height:auto}
+  .rd-count{font-family:var(--mono);font-size:30px;font-weight:500;fill:var(--text)}
+  .rd-label{font-size:10px;letter-spacing:.16em;fill:var(--hint)}
+  .id-text{font-family:var(--sans);font-weight:700;fill:var(--text);stroke:var(--surface);paint-order:stroke;stroke-linejoin:round}
+
+  .tools{position:absolute;top:18px;right:18px;z-index:5;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+  .gear{width:42px;height:42px;border-radius:11px;border:1px solid var(--border);background:var(--surface);
+        color:var(--text);display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow)}
+  .gear:hover{border-color:var(--muted)}
+  .panel{width:272px;max-width:calc(100vw - 36px);background:var(--surface);border:1px solid var(--border);
+         border-radius:14px;padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:16px}
+  .grp{display:flex;flex-direction:column;gap:14px}
+  .grp-h{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--hint)}
+  .grp+.grp{padding-top:16px;border-top:1px solid var(--border)}
+  .panel[hidden]{display:none}
+  .row{display:flex;flex-direction:column;gap:6px}
+  .rt{display:flex;justify-content:space-between;align-items:baseline}
+  .name{font-size:13.5px}
+  .val{font-family:var(--mono);font-size:13px;color:var(--muted)}
+  input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:pointer;margin:0}
+  select{width:100%;font-family:var(--sans);font-size:13px;padding:7px 8px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text);border-radius:8px;cursor:pointer}
+  .tog{flex-direction:row;justify-content:space-between;align-items:center}
+  input[type=checkbox]{accent-color:var(--accent);width:18px;height:18px;cursor:pointer;margin:0}
+  .seg-btns{display:flex;gap:6px}
+  .seg-btns button{flex:1;font-family:var(--mono);font-size:12px;padding:7px 0;border:1px solid var(--border);
+    background:transparent;color:var(--muted);border-radius:8px;cursor:pointer}
+  .seg-btns button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+</style>
+
+<div class="app">
+  <h1 class="sr-only">Phase Wheel</h1>
+
+  <div class="tools">
+    <button class="gear" id="gear" aria-label="Settings" aria-expanded="false">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <line x1="4" y1="8.5" x2="20" y2="8.5"/><circle cx="9" cy="8.5" r="2.4" fill="var(--surface)"/>
+        <line x1="4" y1="15.5" x2="20" y2="15.5"/><circle cx="15" cy="15.5" r="2.4" fill="var(--surface)"/>
+      </svg>
+    </button>
+    <div class="panel" id="panel" hidden>
+      <div class="grp">
+        <div class="grp-h">Sections</div>
+        <div class="row">
+          <div class="rt"><span class="name">Sections</span><span class="val" id="vN">8</span></div>
+          <input type="range" id="N" min="2" max="20" step="1" value="8">
+        </div>
+        <div class="row">
+          <div class="rt"><span class="name">Active at once</span><span class="val" id="vK">4</span></div>
+          <input type="range" id="K" min="1" max="20" step="1" value="4">
+        </div>
+        <div class="row">
+          <div class="rt"><span class="name">Switch every</span><span class="val" id="vI">5 min</span></div>
+          <input type="range" id="I" min="2" max="10" step="1" value="5">
+        </div>
+        <div class="row">
+          <div class="rt"><span class="name">Bursts</span><span class="val" id="vS">1</span></div>
+          <input type="range" id="S" min="1" max="20" step="1" value="1">
+        </div>
+      </div>
+      <div class="grp">
+        <div class="grp-h">Display</div>
+        <div class="row">
+          <div class="rt"><span class="name">Circle size</span><span class="val" id="vSZ">640</span></div>
+          <input type="range" id="SZ" min="320" max="960" step="20" value="640">
+        </div>
+        <div class="row tog">
+          <span class="name">Whole circle</span>
+          <input type="checkbox" id="whole">
+        </div>
+        <div class="row">
+          <div class="rt"><span class="name">Identifier</span></div>
+          <select id="idsel">
+            <option value="num">Numbers</option>
+            <option value="alpha">Letters</option>
+            <option value="animal">Animals</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="rt"><span class="name">Speed</span></div>
+          <div class="seg-btns" id="speed">
+            <button data-x="1">1&times;</button>
+            <button data-x="4">4&times;</button>
+            <button data-x="12">12&times;</button>
+            <button data-x="60">60&times;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dial" id="dial">
+    <svg id="svg" viewBox="0 0 400 196" aria-hidden="true">
+      <defs><clipPath id="top"><rect x="0" y="0" width="400" height="190"></rect></clipPath></defs>
+      <line id="base" x1="30" y1="190" x2="370" y2="190" stroke="var(--border)" stroke-width="1"></line>
+      <g id="wrap" clip-path="url(#top)">
+        <circle id="surface" cx="200" cy="190" r="82" fill="var(--surface)"></circle>
+        <g id="arcs"></g>
+        <circle id="rimIn" cx="200" cy="190" r="83" fill="none" stroke="var(--border)" stroke-width="1"></circle>
+        <circle id="rimOut" cx="200" cy="190" r="171" fill="none" stroke="var(--border)" stroke-width="1"></circle>
+      </g>
+      <g id="ptr">
+        <path id="tri" fill="var(--text)"></path>
+        <line id="tick" stroke="var(--text)" stroke-width="2" stroke-linecap="round"></line>
+      </g>
+      <text id="count" x="200" y="158" text-anchor="middle" class="rd-count">5:00</text>
+    </svg>
+  </div>
+</div>
+
+<script>
+(function(){
+  var CX=200,CY=190,R_OUT=170,R_IN=82,NS="http://www.w3.org/2000/svg";
+  var reduce=false; try{reduce=matchMedia("(prefers-reduced-motion:reduce)").matches;}catch(e){}
+  function el(id){return document.getElementById(id);}
+  var svg=el("svg"),arcsG=el("arcs"),ptrG=el("ptr"),countEl=el("count");
+  var ANIMALS=["\uD83D\uDC36","\uD83D\uDC31","\uD83D\uDC2D","\uD83D\uDC39","\uD83D\uDC30","\uD83E\uDD8A","\uD83D\uDC3B","\uD83D\uDC3C","\uD83D\uDC28","\uD83D\uDC2F","\uD83E\uDD81","\uD83D\uDC2E","\uD83D\uDC37","\uD83D\uDC38","\uD83D\uDC35","\uD83D\uDC14","\uD83D\uDC27","\uD83E\uDD86","\uD83E\uDD89","\uD83E\uDD84"];
+  var P={N:8,K:4,interval:5,bursts:1,speed:60,idMethod:"num",full:false,thick:0.9,size:640};
+  var segs=[],idLabels=[],ringTh=0,pulse=0,lastSwitch=0,lastT=0;
+
+  function polar(r,deg){var a=(deg-90)*Math.PI/180;return [CX+r*Math.cos(a),CY+r*Math.sin(a)];}
+  function sector(a0,a1,rIn,rOut){
+    var o1=polar(rOut,a0),o2=polar(rOut,a1),i2=polar(rIn,a1),i1=polar(rIn,a0),lg=(a1-a0)>180?1:0;
+    return "M"+o1[0]+" "+o1[1]+" A"+rOut+" "+rOut+" 0 "+lg+" 1 "+o2[0]+" "+o2[1]+
+           " L"+i2[0]+" "+i2[1]+" A"+rIn+" "+rIn+" 0 "+lg+" 0 "+i1[0]+" "+i1[1]+" Z";
+  }
+  function hue(i){var h=i*360/P.N,L=52-7*Math.cos((h-65)*Math.PI/180);return "hsl("+h.toFixed(1)+" 60% "+L.toFixed(1)+"%)";}
+  function ident(i){
+    if(P.idMethod==="alpha") return String.fromCharCode(65+(i%26));
+    if(P.idMethod==="animal") return ANIMALS[i%ANIMALS.length];
+    return String(i+1);
+  }
+  function basePattern(){
+    var on=P.K, off=P.N-P.K;
+    if(off<=0) return [{start:0,len:P.N}];
+    var b=Math.max(1,Math.min(P.bursts,on,off)),runs=[],pos=0;
+    for(var r=0;r<b;r++){
+      var rl=Math.floor((r+1)*on/b)-Math.floor(r*on/b);
+      var gl=Math.floor((r+1)*off/b)-Math.floor(r*off/b);
+      runs.push({start:pos,len:rl}); pos+=rl+gl;
+    }
+    return runs;
+  }
+
+  function build(){
+    arcsG.innerHTML=""; segs=[]; idLabels=[];
+    ringTh=(R_OUT-R_IN)/P.N;
+    var slot=360/P.N, runs=basePattern();
+    var th=ringTh*P.thick;
+    for(var i=0;i<P.N;i++){
+      var c=R_OUT-(i+0.5)*ringTh, rOut=c+th/2, rIn=c-th/2, rMid=c, lbl=ident(i);
+      var fsMax=Math.max(6,Math.min(th*0.82,16));
+      for(var r=0;r<runs.length;r++){
+        var a0=(runs[r].start+i)*slot, w=Math.min(359.4,runs[r].len*slot);
+        var p=document.createElementNS(NS,"path");
+        p.setAttribute("d",sector(a0,a0+w,rIn,rOut));
+        p.setAttribute("fill",hue(i)); p.setAttribute("opacity","0.2");
+        arcsG.appendChild(p); segs.push({path:p,start:a0,width:w});
+        var pt=polar(rMid,a0+w/2), fs=fsMax, arcPx=w*Math.PI/180*rMid;
+        if(fs>arcPx*0.72) fs=Math.max(5,arcPx*0.72);
+        var t=document.createElementNS(NS,"text");
+        t.setAttribute("x",pt[0]); t.setAttribute("y",pt[1]);
+        t.setAttribute("text-anchor","middle"); t.setAttribute("dominant-baseline","central");
+        t.setAttribute("font-size",fs.toFixed(1)); t.setAttribute("stroke-width",(fs*0.16).toFixed(2));
+        t.setAttribute("class","id-text"); t.textContent=lbl;
+        arcsG.appendChild(t); idLabels.push({el:t,tx:pt[0],ty:pt[1]});
+      }
+    }
+    el("tri").setAttribute("d","M"+(CX-8)+" "+(CY-R_OUT-15)+" L"+(CX+8)+" "+(CY-R_OUT-15)+" L"+CX+" "+(CY-R_OUT-2)+" Z");
+    el("tick").setAttribute("x1",CX); el("tick").setAttribute("y1",CY-R_OUT-2);
+    el("tick").setAttribute("x2",CX); el("tick").setAttribute("y2",CY-R_OUT+8);
+  }
+  function fmt(s){s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+":"+("0"+(s%60)).slice(-2);}
+
+  function paint(eff){
+    var iv=P.interval*60, slot=360/P.N;
+    var pointer=((eff/iv*slot)%360+360)%360;
+    arcsG.setAttribute("transform","rotate("+(-pointer).toFixed(3)+" "+CX+" "+CY+")");
+    for(var j=0;j<segs.length;j++){
+      var s=segs[j], delta=((pointer-s.start)%360+360)%360;
+      if(delta<s.width){var ramp=Math.min(6,s.width/2),edge=Math.min(delta,s.width-delta),k=ramp>0?Math.min(1,edge/ramp):1;
+        s.path.setAttribute("opacity",(0.55+0.45*k).toFixed(3));}
+      else s.path.setAttribute("opacity","0.2");
+    }
+    var pr=pointer.toFixed(3);
+    for(var m=0;m<idLabels.length;m++){var L=idLabels[m];
+      L.el.setAttribute("transform","rotate("+pr+" "+L.tx+" "+L.ty+")");}
+    var sc=reduce?1:(1+pulse*0.5),px=CX,py=CY-R_OUT-8;
+    ptrG.setAttribute("transform","translate("+px+" "+py+") scale("+sc.toFixed(3)+") translate("+(-px)+" "+(-py)+")");
+    countEl.textContent=fmt(iv-(eff%iv));
+  }
+  function loop(){
+    var eff=Date.now()/1000*P.speed, iv=P.interval*60, sw=Math.floor(eff/iv);
+    if(sw!==lastSwitch){lastSwitch=sw;pulse=0.5;}
+    var now=performance.now(), dt=lastT?Math.min(0.1,(now-lastT)/1000):0; lastT=now;
+    if(pulse>0)pulse=Math.max(0,pulse-dt*1.8);
+    paint(eff); requestAnimationFrame(loop);
+  }
+
+  function applyLayout(){
+    var full=P.full;
+    CY=full?200:190;
+    svg.setAttribute("viewBox",full?"0 0 400 400":"0 0 400 196");
+    el("wrap").setAttribute("clip-path",full?"none":"url(#top)");
+    el("base").setAttribute("display",full?"none":"inline");
+    el("surface").setAttribute("cy",CY); el("rimIn").setAttribute("cy",CY); el("rimOut").setAttribute("cy",CY);
+    el("base").setAttribute("y1",CY); el("base").setAttribute("y2",CY);
+    if(full){el("count").setAttribute("y",CY+10);}
+    else{el("count").setAttribute("y",CY-32);}
+    build();
+  }
+
+  function applySize(){el("dial").style.width=P.size+"px";}
+
+  function clampDeps(){
+    el("K").max=P.N; if(P.K>P.N){P.K=P.N;el("K").value=P.N;}
+    var bmax=Math.max(1,Math.min(P.K,P.N-P.K)); el("S").max=bmax;
+    if(P.bursts>bmax){P.bursts=bmax;el("S").value=bmax;}
+  }
+  function labels(){el("vN").textContent=P.N;el("vK").textContent=P.K;el("vI").textContent=P.interval+" min";el("vS").textContent=P.bursts;el("vSZ").textContent=P.size;}
+  el("N").addEventListener("input",function(){P.N=+this.value;clampDeps();P.K=+el("K").value;P.bursts=+el("S").value;labels();build();});
+  el("K").addEventListener("input",function(){P.K=+this.value;clampDeps();P.bursts=+el("S").value;labels();build();});
+  el("I").addEventListener("input",function(){P.interval=+this.value;labels();});
+  el("S").addEventListener("input",function(){P.bursts=+this.value;clampDeps();P.bursts=+el("S").value;labels();build();});
+  el("SZ").addEventListener("input",function(){P.size=+this.value;applySize();labels();});
+  el("idsel").addEventListener("change",function(){P.idMethod=this.value;build();});
+  el("whole").addEventListener("change",function(){P.full=this.checked;applyLayout();});
+  function setSpeed(b){P.speed=+b.getAttribute("data-x");var kids=el("speed").children;
+    for(var i=0;i<kids.length;i++)kids[i].className=kids[i]===b?"on":"";}
+  el("speed").addEventListener("click",function(e){var b=e.target.closest("button");if(b)setSpeed(b);});
+
+  var gear=el("gear"),panel=el("panel");
+  gear.addEventListener("click",function(){var h=panel.hidden;panel.hidden=!h;gear.setAttribute("aria-expanded",String(h));});
+
+  clampDeps(); applySize(); applyLayout(); labels(); setSpeed(el("speed").children[3]);
+  lastSwitch=Math.floor(Date.now()/1000*P.speed/(P.interval*60));
+  requestAnimationFrame(loop);
+})();
+</script>
+</html>
