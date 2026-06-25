@@ -5,9 +5,11 @@
   "private": true,
   "scripts": {
     "deploy": "wrangler pages deploy public --project-name=phase-wheel",
-    "dev": "wrangler pages dev public"
+    "dev": "wrangler pages dev public",
+    "vendor": "cp node_modules/qrcode-generator/dist/qrcode.js public/qrcode.js"
   },
   "devDependencies": {
+    "qrcode-generator": "^2.0.4",
     "wrangler": "^3"
   }
 }

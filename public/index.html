@@ -51,6 +51,19 @@
     background:transparent;color:var(--muted);border-radius:8px;cursor:pointer}
   .seg-btns button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+  .qr-btn{width:100%;font-family:var(--sans);font-size:13px;padding:9px 0;border:1px solid var(--border);
+    background:var(--accent-soft);color:var(--accent);border-radius:8px;cursor:pointer;font-weight:600;
+    display:flex;align-items:center;justify-content:center;gap:8px}
+  .qr-btn:hover{border-color:var(--accent)}
+  .qr-btn svg{width:16px;height:16px}
+  .qr-modal{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
+    padding:24px;cursor:pointer;background:rgba(10,9,20,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+  .qr-modal[hidden]{display:none}
+  .qr-card{background:#fff;border-radius:18px;padding:22px;box-shadow:var(--shadow);
+    display:flex;flex-direction:column;gap:14px;align-items:center;max-width:min(92vw,520px)}
+  .qr-svg{width:min(80vw,440px);max-width:100%}
+  .qr-svg svg{display:block;width:100%;height:auto}
+  .qr-url{font-family:var(--mono);font-size:11px;line-height:1.45;color:#555;word-break:break-all;text-align:center;max-width:440px}
 </style>
 
 <div class="app">
@@ -111,6 +124,26 @@
           </div>
         </div>
       </div>
+      <div class="grp">
+        <div class="grp-h">Share</div>
+        <div class="row">
+          <button class="qr-btn" id="qrbtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/><line x1="14" y1="14" x2="14" y2="21"/>
+              <line x1="18" y1="14" x2="18" y2="18"/><line x1="21" y1="14" x2="21" y2="21"/><line x1="18" y1="21" x2="21" y2="21"/>
+            </svg>
+            Show QR code
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="qr-modal" id="qrModal" hidden role="dialog" aria-modal="true" aria-label="Shareable QR code">
+    <div class="qr-card">
+      <div class="qr-svg" id="qrSvg"></div>
+      <div class="qr-url" id="qrUrl"></div>
     </div>
   </div>
 
@@ -133,6 +166,7 @@
   </div>
 </div>
 
+<script src="qrcode.js"></script>
 <script>
 (function(){
   var CX=200,CY=190,R_OUT=170,R_IN=82,NS="http://www.w3.org/2000/svg";
@@ -140,7 +174,7 @@
   function el(id){return document.getElementById(id);}
   var svg=el("svg"),arcsG=el("arcs"),ptrG=el("ptr"),countEl=el("count");
   var ANIMALS=["\uD83D\uDC36","\uD83D\uDC31","\uD83D\uDC2D","\uD83D\uDC39","\uD83D\uDC30","\uD83E\uDD8A","\uD83D\uDC3B","\uD83D\uDC3C","\uD83D\uDC28","\uD83D\uDC2F","\uD83E\uDD81","\uD83D\uDC2E","\uD83D\uDC37","\uD83D\uDC38","\uD83D\uDC35","\uD83D\uDC14","\uD83D\uDC27","\uD83E\uDD86","\uD83E\uDD89","\uD83E\uDD84"];
-  var P={N:8,K:4,interval:5,bursts:1,speed:60,idMethod:"num",full:false,thick:0.9,size:640};
+  var P={N:8,K:4,interval:5,bursts:1,speed:1,idMethod:"num",full:false,thick:0.9,size:640};
   var segs=[],idLabels=[],ringTh=0,pulse=0,lastSwitch=0,lastT=0;
 
   function polar(r,deg){var a=(deg-90)*Math.PI/180;return [CX+r*Math.cos(a),CY+r*Math.sin(a)];}
@@ -253,11 +287,53 @@
   function setSpeed(b){P.speed=+b.getAttribute("data-x");var kids=el("speed").children;
     for(var i=0;i<kids.length;i++)kids[i].className=kids[i]===b?"on":"";}
   el("speed").addEventListener("click",function(e){var b=e.target.closest("button");if(b)setSpeed(b);});
+  // Highlight the speed button matching P.speed; fall back to 1x if none match.
+  function applySpeedUI(){var kids=el("speed").children,found=false;
+    for(var i=0;i<kids.length;i++){var on=+kids[i].getAttribute("data-x")===P.speed;kids[i].className=on?"on":"";if(on)found=true;}
+    if(!found){P.speed=1;kids[0].className="on";}}
 
   var gear=el("gear"),panel=el("panel");
   gear.addEventListener("click",function(){var h=panel.hidden;panel.hidden=!h;gear.setAttribute("aria-expanded",String(h));});
 
-  clampDeps(); applySize(); applyLayout(); labels(); setSpeed(el("speed").children[3]);
+  // ---- Seed settings from query params (round-trips with the QR link) ----
+  function clampInt(v,min,max,def){v=parseInt(v,10);if(isNaN(v))return def;return Math.max(min,Math.min(max,v));}
+  function seedFromParams(){
+    var q;try{q=new URLSearchParams(location.search);}catch(e){return;}
+    if(!q.toString())return;
+    if(q.has("n"))P.N=clampInt(q.get("n"),+el("N").min,+el("N").max,P.N);
+    if(q.has("k"))P.K=clampInt(q.get("k"),+el("K").min,20,P.K);
+    if(q.has("i"))P.interval=clampInt(q.get("i"),+el("I").min,+el("I").max,P.interval);
+    if(q.has("s"))P.bursts=clampInt(q.get("s"),+el("S").min,20,P.bursts);
+    if(q.has("v"))P.speed=clampInt(q.get("v"),1,60,P.speed);
+    if(q.has("sz")){var sz=clampInt(q.get("sz"),+el("SZ").min,+el("SZ").max,P.size);P.size=Math.round(sz/20)*20;}
+    if(q.has("id")){var m=q.get("id");if(m==="num"||m==="alpha"||m==="animal")P.idMethod=m;}
+    if(q.has("full"))P.full=(q.get("full")==="1"||q.get("full")==="true");
+    el("N").value=P.N;el("K").value=P.K;el("I").value=P.interval;el("S").value=P.bursts;
+    el("SZ").value=P.size;el("idsel").value=P.idMethod;el("whole").checked=P.full;
+  }
+
+  // ---- QR share: encode the current settings into the page URL ----
+  function settingsURL(){
+    var u=new URL(location.href);u.search="";var p=u.searchParams;
+    p.set("n",P.N);p.set("k",P.K);p.set("i",P.interval);p.set("s",P.bursts);
+    p.set("v",P.speed);p.set("id",P.idMethod);p.set("full",P.full?1:0);p.set("sz",P.size);
+    return u.toString();
+  }
+  function buildQR(text){
+    var qr=qrcode(0,"M");qr.addData(text);qr.make();
+    var n=qr.getModuleCount(),q=4,d=n+2*q,o=['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+d+' '+d+'" shape-rendering="crispEdges"><rect width="'+d+'" height="'+d+'" fill="#fff"/>'];
+    for(var r=0;r<n;r++)for(var c=0;c<n;c++)if(qr.isDark(r,c))o.push('<rect x="'+(c+q)+'" y="'+(r+q)+'" width="1" height="1" fill="#000"/>');
+    o.push('</svg>');return o.join("");
+  }
+  var qrModal=el("qrModal");
+  function openQR(){var url=settingsURL();el("qrSvg").innerHTML=buildQR(url);el("qrUrl").textContent=url;qrModal.hidden=false;}
+  function closeQR(){qrModal.hidden=true;}
+  el("qrbtn").addEventListener("click",openQR);
+  qrModal.addEventListener("click",closeQR);
+  document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!qrModal.hidden)closeQR();});
+
+  seedFromParams();
+  clampDeps(); applySize(); applyLayout(); labels(); applySpeedUI();
   lastSwitch=Math.floor(Date.now()/1000*P.speed/(P.interval*60));
   requestAnimationFrame(loop);
 })();
