@@ -79,7 +79,10 @@
   .fm-clear[hidden]{display:none}
   .panel{width:272px;max-width:calc(100vw - 36px);background:var(--surface);border:1px solid var(--border);
          border-radius:14px;padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:16px;
-         max-height:calc(100vh - 96px);max-height:calc(100dvh - 96px);overflow-y:auto;overscroll-behavior:contain}
+         /* Budget is divided by --ui because the whole cluster is scaled; the -52px leaves
+            room for the scaled button row + gap above the panel. */
+         max-height:calc((100vh - 36px)/var(--ui) - 52px);max-height:calc((100dvh - 36px)/var(--ui) - 52px);
+         overflow-y:auto;overscroll-behavior:contain}
   .grp{display:flex;flex-direction:column;gap:14px}
   .grp-h{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--hint)}
   .grp+.grp{padding-top:16px;border-top:1px solid var(--border)}
