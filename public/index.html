@@ -4,6 +4,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Phase Wheel</title>
 <style>
+  @font-face{
+    font-family:"DSEG14";
+    src:url("DSEG14ClassicMini-Regular.woff2") format("woff2");
+    font-weight:400;font-style:normal;font-display:swap;
+  }
   :root{
     --bg:#f6f5f2; --surface:#ffffff; --text:#1d1c24; --muted:#6c6979; --hint:#9a97a8;
     --border:rgba(0,0,0,.12); --accent:#5750c9; --accent-soft:rgba(87,80,201,.12);
@@ -28,7 +33,7 @@
   .app{position:relative;min-height:100vh;display:flex;align-items:safe center;justify-content:safe center;padding:24px;overflow:auto}
   .dial{width:640px}
   .dial svg{display:block;width:100%;height:auto}
-  .rd-count{font-family:var(--mono);font-size:30px;font-weight:500;fill:var(--text)}
+  .rd-count{font-family:"DSEG14",var(--mono);font-size:26px;font-weight:400;fill:var(--text)}
   .corner-count{position:fixed;left:16px;bottom:14px;z-index:5;font-family:var(--mono);font-size:15px;color:var(--muted);font-variant-numeric:tabular-nums;pointer-events:none}
   .corner-count[hidden]{display:none}
   .rd-label{font-size:10px;letter-spacing:.16em;fill:var(--hint)}
@@ -39,7 +44,8 @@
         color:var(--text);display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow)}
   .gear:hover{border-color:var(--muted)}
   .panel{width:272px;max-width:calc(100vw - 36px);background:var(--surface);border:1px solid var(--border);
-         border-radius:14px;padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:16px}
+         border-radius:14px;padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:16px;
+         max-height:calc(100vh - 96px);max-height:calc(100dvh - 96px);overflow-y:auto;overscroll-behavior:contain}
   .grp{display:flex;flex-direction:column;gap:14px}
   .grp-h{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--hint)}
   .grp+.grp{padding-top:16px;border-top:1px solid var(--border)}
@@ -77,7 +83,7 @@
 <div class="app">
   <h1 class="sr-only">Phase Wheel</h1>
 
-  <div class="tools">
+  <div class="tools" id="tools">
     <button class="gear" id="gear" aria-label="Settings" aria-expanded="false">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
         <line x1="4" y1="8.5" x2="20" y2="8.5"/><circle cx="9" cy="8.5" r="2.4" fill="var(--surface)"/>
@@ -333,12 +339,16 @@
     el("surface").setAttribute("cx",CX); el("rimIn").setAttribute("cx",CX); el("rimOut").setAttribute("cx",CX);
     el("surface").setAttribute("cy",CY); el("rimIn").setAttribute("cy",CY); el("rimOut").setAttribute("cy",CY);
     el("hit").setAttribute("cx",CX); el("hit").setAttribute("cy",CY);
-    // Full circle keeps the emphasized timer in the centre of the dial; the split modes
-    // hide it and show a small, muted timer pinned to the page's lower-left corner.
-    var full=(m==="full"), cnt=el("count");
-    cnt.setAttribute("x",CX); cnt.setAttribute("y",CY+10);
-    cnt.style.display=full?"":"none";
-    el("cornerCount").hidden=full;
+    // Timer rendered inside the circle for every mode (positioned per layout). The
+    // page-corner timer is kept (paint still updates it) but disabled as dead code while
+    // we experiment with the in-circle placement.
+    var cnt=el("count");
+    cnt.setAttribute("text-anchor","middle");
+    if(m==="portrait"){ cnt.setAttribute("x",CX-34); cnt.setAttribute("y",CY+10); }
+    else if(m==="full"){ cnt.setAttribute("x",CX); cnt.setAttribute("y",CY+10); }
+    else { cnt.setAttribute("x",CX); cnt.setAttribute("y",CY-32); }
+    cnt.style.display="";
+    el("cornerCount").hidden=true;
     build();
   }
 
@@ -376,7 +386,10 @@
   el("hit").addEventListener("click",function(){setMode(MODES[(MODES.indexOf(P.mode)+1)%MODES.length]);});
 
   var gear=el("gear"),panel=el("panel");
-  gear.addEventListener("click",function(){var h=panel.hidden;panel.hidden=!h;gear.setAttribute("aria-expanded",String(h));});
+  function setPanel(open){panel.hidden=!open;gear.setAttribute("aria-expanded",String(open));}
+  gear.addEventListener("click",function(){setPanel(panel.hidden);});
+  // Close the panel when clicking/tapping anywhere outside the tools (gear + panel).
+  document.addEventListener("click",function(e){if(!panel.hidden&&!el("tools").contains(e.target))setPanel(false);});
 
   // ---- Config codec: pack every setting into one tight base36 param ("c") ----
   // Each field maps a setting to a 0-based index in a fixed range (`c` = #values);
