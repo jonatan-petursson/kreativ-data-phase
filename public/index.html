@@ -334,7 +334,7 @@
     else { CX=200; CY=(m==="full")?200:190; PHI=0; }
     // Portrait viewBox is widened past the cut edge (CX=190) so the centre-aligned clock
     // isn't clipped; the rings stay clipped to the left half via the clip rect below.
-    svg.setAttribute("viewBox", m==="full"?"0 0 400 400" : m==="portrait"?"0 0 232 400" : "0 0 400 196");
+    svg.setAttribute("viewBox", m==="full"?"0 0 400 400" : m==="portrait"?"0 0 232 400" : "0 0 400 208");
     el("wrap").setAttribute("clip-path", m==="full"?"none":"url(#top)");
     // Clip to the visible semicircle: top half for "half", left half for "portrait".
     if(m==="portrait"){ el("clip").setAttribute("width",CX); el("clip").setAttribute("height",400); }
@@ -348,10 +348,10 @@
     el("surface").setAttribute("cx",CX); el("rimIn").setAttribute("cx",CX); el("rimOut").setAttribute("cx",CX);
     el("surface").setAttribute("cy",CY); el("rimIn").setAttribute("cy",CY); el("rimOut").setAttribute("cy",CY);
     el("hit").setAttribute("cx",CX); el("hit").setAttribute("cy",CY);
-    // Timer rendered inside the circle for every mode, horizontally centred on the circle
-    // midpoint (CX). Half puts it above the baseline; full/portrait centre it vertically.
-    // The page-corner timer is kept (paint still updates it) but disabled as dead code.
-    var cx2=CX, cy2=(m==="half")?CY-32:CY+10;
+    // Timer centred on the circle midpoint (CX,CY) in every mode. The font has no descent,
+    // so baseline = CY + fontSize/2 (11) puts the glyph's visual centre on CY — i.e. on the
+    // line through the circle. The page-corner timer is kept but disabled as dead code.
+    var cx2=CX, cy2=CY+11;
     var cnt=el("count"), cbg=el("countbg");
     cnt.setAttribute("x",cx2); cnt.setAttribute("y",cy2); cnt.setAttribute("text-anchor","middle"); cnt.style.display="";
     cbg.setAttribute("x",cx2); cbg.setAttribute("y",cy2); cbg.setAttribute("text-anchor","middle"); cbg.style.display="";
