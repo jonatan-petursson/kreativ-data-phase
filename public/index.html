@@ -278,7 +278,10 @@
     for(var j=0;j<segs.length;j++){
       var s=segs[j], delta=((pointer-s.start)%360+360)%360;
       if(delta<s.width){var ramp=Math.min(6,s.width/2),edge=Math.min(delta,s.width-delta),k=ramp>0?Math.min(1,edge/ramp):1;
-        s.path.setAttribute("opacity",(blinkOff?0.18:(0.55+0.45*k)).toFixed(3));}
+        // Only the segment about to end blinks — the one whose trailing edge crosses the
+        // now line at the next switch (within one slot of fully passing it).
+        var ending=delta>=s.width-slot;
+        s.path.setAttribute("opacity",(blinkOff&&ending?0.18:(0.55+0.45*k)).toFixed(3));}
       else s.path.setAttribute("opacity","0.2");
     }
     // Label placement: "center" is static (set in build); "now" pins the label to the
