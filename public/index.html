@@ -39,6 +39,9 @@
   .corner-count[hidden]{display:none}
   .rd-label{font-size:10px;letter-spacing:.16em;fill:var(--hint)}
   .id-text{font-family:var(--sans);font-weight:700;fill:var(--text);stroke:var(--surface);paint-order:stroke;stroke-linejoin:round}
+  /* Emoji glyphs must not be filled/stroked (that renders them blank on Safari/iOS); they
+     also need an explicit colour-emoji font stack. */
+  .id-emoji{font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
 
   .tools{position:fixed;top:18px;right:18px;z-index:5;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
   .gear{width:42px;height:42px;border-radius:11px;border:1px solid var(--border);background:var(--surface);
@@ -261,7 +264,7 @@
         t.setAttribute("x",pt[0]); t.setAttribute("y",pt[1]);
         t.setAttribute("text-anchor","middle"); t.setAttribute("dominant-baseline","central");
         t.setAttribute("font-size",fs.toFixed(1)); t.setAttribute("stroke-width",(fs*0.16).toFixed(2));
-        t.setAttribute("class","id-text"); t.textContent=lbl;
+        t.setAttribute("class",P.idMethod==="animal"?"id-emoji":"id-text"); t.textContent=lbl;
         arcsG.appendChild(t); idLabels.push({el:t,tx:pt[0],ty:pt[1],a0:a0,w:w,rMid:rMid,fs:fs});
       }
     }
