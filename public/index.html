@@ -19,11 +19,11 @@
   /* Dark palette: applied automatically when the system prefers dark (unless the
      user forced light), and always when the user explicitly toggles dark. */
   @media (prefers-color-scheme:dark){
-    :root:not([data-theme="light"]){--bg:#131218;--surface:#1c1b25;--text:#ece9f1;--muted:#9b97ad;--hint:#6c6880;
+    :root:not([data-theme="light"]){--bg:#000000;--surface:#1c1b25;--text:#ece9f1;--muted:#9b97ad;--hint:#6c6880;
           --border:rgba(255,255,255,.13);--accent:#8b83ef;--accent-soft:rgba(139,131,239,.18);
           --shadow:0 10px 34px rgba(0,0,0,.5)}
   }
-  :root[data-theme="dark"]{--bg:#131218;--surface:#1c1b25;--text:#ece9f1;--muted:#9b97ad;--hint:#6c6880;
+  :root[data-theme="dark"]{--bg:#000000;--surface:#1c1b25;--text:#ece9f1;--muted:#9b97ad;--hint:#6c6880;
         --border:rgba(255,255,255,.13);--accent:#8b83ef;--accent-soft:rgba(139,131,239,.18);
         --shadow:0 10px 34px rgba(0,0,0,.5)}
   *{box-sizing:border-box}
@@ -181,7 +181,7 @@
       <defs><clipPath id="top"><rect id="clip" x="0" y="0" width="400" height="190"></rect></clipPath></defs>
       <line id="base" x1="30" y1="190" x2="370" y2="190" stroke="var(--border)" stroke-width="1"></line>
       <g id="wrap" clip-path="url(#top)">
-        <circle id="surface" cx="200" cy="190" r="82" fill="var(--surface)"></circle>
+        <circle id="surface" cx="200" cy="190" r="82" fill="none"></circle>
         <g id="arcs"></g>
         <circle id="rimIn" cx="200" cy="190" r="83" fill="none" stroke="var(--border)" stroke-width="1"></circle>
         <circle id="rimOut" cx="200" cy="190" r="171" fill="none" stroke="var(--border)" stroke-width="1"></circle>
@@ -332,7 +332,9 @@
     //   portrait — left pointer, vertical split, show left semicircle (tall layout)
     if(m==="portrait"){ CX=190; CY=200; PHI=270; }
     else { CX=200; CY=(m==="full")?200:190; PHI=0; }
-    svg.setAttribute("viewBox", m==="full"?"0 0 400 400" : m==="portrait"?"0 0 196 400" : "0 0 400 196");
+    // Portrait viewBox is widened past the cut edge (CX=190) so the centre-aligned clock
+    // isn't clipped; the rings stay clipped to the left half via the clip rect below.
+    svg.setAttribute("viewBox", m==="full"?"0 0 400 400" : m==="portrait"?"0 0 232 400" : "0 0 400 196");
     el("wrap").setAttribute("clip-path", m==="full"?"none":"url(#top)");
     // Clip to the visible semicircle: top half for "half", left half for "portrait".
     if(m==="portrait"){ el("clip").setAttribute("width",CX); el("clip").setAttribute("height",400); }
@@ -340,16 +342,16 @@
     el("base").setAttribute("display", m==="full"?"none":"inline");
     if(m==="portrait"){ el("base").setAttribute("x1",CX); el("base").setAttribute("y1",30); el("base").setAttribute("x2",CX); el("base").setAttribute("y2",370); }
     else { el("base").setAttribute("x1",30); el("base").setAttribute("y1",CY); el("base").setAttribute("x2",370); el("base").setAttribute("y2",CY); }
+    // Gap the dividing line across the central hub (the inner circle) so it doesn't cross
+    // the centre/clock. Line runs 30..370 (length 340); gap is the inner-circle diameter.
+    var sol=170-R_IN; el("base").setAttribute("stroke-dasharray",sol+" "+(2*R_IN)+" "+sol);
     el("surface").setAttribute("cx",CX); el("rimIn").setAttribute("cx",CX); el("rimOut").setAttribute("cx",CX);
     el("surface").setAttribute("cy",CY); el("rimIn").setAttribute("cy",CY); el("rimOut").setAttribute("cy",CY);
     el("hit").setAttribute("cx",CX); el("hit").setAttribute("cy",CY);
-    // Timer rendered inside the circle for every mode (positioned per layout). The
-    // page-corner timer is kept (paint still updates it) but disabled as dead code while
-    // we experiment with the in-circle placement.
-    var cx2,cy2;
-    if(m==="portrait"){ cx2=CX-44; cy2=CY+10; }
-    else if(m==="full"){ cx2=CX; cy2=CY+10; }
-    else { cx2=CX; cy2=CY-32; }
+    // Timer rendered inside the circle for every mode, horizontally centred on the circle
+    // midpoint (CX). Half puts it above the baseline; full/portrait centre it vertically.
+    // The page-corner timer is kept (paint still updates it) but disabled as dead code.
+    var cx2=CX, cy2=(m==="half")?CY-32:CY+10;
     var cnt=el("count"), cbg=el("countbg");
     cnt.setAttribute("x",cx2); cnt.setAttribute("y",cy2); cnt.setAttribute("text-anchor","middle"); cnt.style.display="";
     cbg.setAttribute("x",cx2); cbg.setAttribute("y",cy2); cbg.setAttribute("text-anchor","middle"); cbg.style.display="";
@@ -359,7 +361,7 @@
 
   // Width drives px size; portrait is the tall variant, so scale by its narrow aspect
   // (196/400) to keep its long edge comparable to the other modes at the same setting.
-  function applySize(){el("dial").style.width=(P.mode==="portrait"?Math.round(P.size*196/400):P.size)+"px";}
+  function applySize(){el("dial").style.width=(P.mode==="portrait"?Math.round(P.size*232/400):P.size)+"px";}
 
   function clampDeps(){
     el("K").max=P.N; if(P.K>P.N){P.K=P.N;el("K").value=P.N;}
