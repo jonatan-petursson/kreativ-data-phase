@@ -11,23 +11,30 @@
     --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
     --sans:"Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif;
   }
+  /* Dark palette: applied automatically when the system prefers dark (unless the
+     user forced light), and always when the user explicitly toggles dark. */
   @media (prefers-color-scheme:dark){
-    :root{--bg:#131218;--surface:#1c1b25;--text:#ece9f1;--muted:#9b97ad;--hint:#6c6880;
+    :root:not([data-theme="light"]){--bg:#131218;--surface:#1c1b25;--text:#ece9f1;--muted:#9b97ad;--hint:#6c6880;
           --border:rgba(255,255,255,.13);--accent:#8b83ef;--accent-soft:rgba(139,131,239,.18);
           --shadow:0 10px 34px rgba(0,0,0,.5)}
   }
+  :root[data-theme="dark"]{--bg:#131218;--surface:#1c1b25;--text:#ece9f1;--muted:#9b97ad;--hint:#6c6880;
+        --border:rgba(255,255,255,.13);--accent:#8b83ef;--accent-soft:rgba(139,131,239,.18);
+        --shadow:0 10px 34px rgba(0,0,0,.5)}
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
   body{background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
   .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-  .app{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-  .dial{width:640px;max-width:94vw}
+  .app{position:relative;min-height:100vh;display:flex;align-items:safe center;justify-content:safe center;padding:24px;overflow:auto}
+  .dial{width:640px}
   .dial svg{display:block;width:100%;height:auto}
   .rd-count{font-family:var(--mono);font-size:30px;font-weight:500;fill:var(--text)}
+  .corner-count{position:fixed;left:16px;bottom:14px;z-index:5;font-family:var(--mono);font-size:15px;color:var(--muted);font-variant-numeric:tabular-nums;pointer-events:none}
+  .corner-count[hidden]{display:none}
   .rd-label{font-size:10px;letter-spacing:.16em;fill:var(--hint)}
   .id-text{font-family:var(--sans);font-weight:700;fill:var(--text);stroke:var(--surface);paint-order:stroke;stroke-linejoin:round}
 
-  .tools{position:absolute;top:18px;right:18px;z-index:5;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+  .tools{position:fixed;top:18px;right:18px;z-index:5;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
   .gear{width:42px;height:42px;border-radius:11px;border:1px solid var(--border);background:var(--surface);
         color:var(--text);display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow)}
   .gear:hover{border-color:var(--muted)}
@@ -50,6 +57,7 @@
   .seg-btns button{flex:1;font-family:var(--mono);font-size:12px;padding:7px 0;border:1px solid var(--border);
     background:transparent;color:var(--muted);border-radius:8px;cursor:pointer}
   .seg-btns button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+  #mode button{font-family:var(--sans);font-size:12.5px}
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
   .qr-btn{width:100%;font-family:var(--sans);font-size:13px;padding:9px 0;border:1px solid var(--border);
     background:var(--accent-soft);color:var(--accent);border-radius:8px;cursor:pointer;font-weight:600;
@@ -92,7 +100,7 @@
           <input type="range" id="I" min="2" max="10" step="1" value="5">
         </div>
         <div class="row">
-          <div class="rt"><span class="name">Bursts</span><span class="val" id="vS">1</span></div>
+          <div class="rt"><span class="name">Splits</span><span class="val" id="vS">1</span></div>
           <input type="range" id="S" min="1" max="20" step="1" value="1">
         </div>
       </div>
@@ -102,9 +110,17 @@
           <div class="rt"><span class="name">Circle size</span><span class="val" id="vSZ">640</span></div>
           <input type="range" id="SZ" min="320" max="960" step="20" value="640">
         </div>
+        <div class="row">
+          <div class="rt"><span class="name">Shape</span></div>
+          <div class="seg-btns" id="mode">
+            <button data-m="half">Half</button>
+            <button data-m="full">Full</button>
+            <button data-m="portrait">Portrait</button>
+          </div>
+        </div>
         <div class="row tog">
-          <span class="name">Whole circle</span>
-          <input type="checkbox" id="whole">
+          <span class="name">Dark mode</span>
+          <input type="checkbox" id="dark">
         </div>
         <div class="row">
           <div class="rt"><span class="name">Identifier</span></div>
@@ -118,8 +134,6 @@
           <div class="rt"><span class="name">Speed</span></div>
           <div class="seg-btns" id="speed">
             <button data-x="1">1&times;</button>
-            <button data-x="4">4&times;</button>
-            <button data-x="12">12&times;</button>
             <button data-x="60">60&times;</button>
           </div>
         </div>
@@ -149,7 +163,7 @@
 
   <div class="dial" id="dial">
     <svg id="svg" viewBox="0 0 400 196" aria-hidden="true">
-      <defs><clipPath id="top"><rect x="0" y="0" width="400" height="190"></rect></clipPath></defs>
+      <defs><clipPath id="top"><rect id="clip" x="0" y="0" width="400" height="190"></rect></clipPath></defs>
       <line id="base" x1="30" y1="190" x2="370" y2="190" stroke="var(--border)" stroke-width="1"></line>
       <g id="wrap" clip-path="url(#top)">
         <circle id="surface" cx="200" cy="190" r="82" fill="var(--surface)"></circle>
@@ -162,8 +176,11 @@
         <line id="tick" stroke="var(--text)" stroke-width="2" stroke-linecap="round"></line>
       </g>
       <text id="count" x="200" y="158" text-anchor="middle" class="rd-count">5:00</text>
+      <circle id="hit" cx="200" cy="190" r="78" fill="transparent" style="cursor:pointer"><title>Tap to change shape</title></circle>
     </svg>
   </div>
+
+  <div class="corner-count" id="cornerCount" aria-hidden="true" hidden>5:00</div>
 </div>
 
 <script src="qrcode.js"></script>
@@ -172,10 +189,11 @@
   var CX=200,CY=190,R_OUT=170,R_IN=82,NS="http://www.w3.org/2000/svg";
   var reduce=false; try{reduce=matchMedia("(prefers-reduced-motion:reduce)").matches;}catch(e){}
   function el(id){return document.getElementById(id);}
-  var svg=el("svg"),arcsG=el("arcs"),ptrG=el("ptr"),countEl=el("count");
+  var svg=el("svg"),arcsG=el("arcs"),ptrG=el("ptr"),countEl=el("count"),cornerEl=el("cornerCount");
   var ANIMALS=["\uD83D\uDC36","\uD83D\uDC31","\uD83D\uDC2D","\uD83D\uDC39","\uD83D\uDC30","\uD83E\uDD8A","\uD83D\uDC3B","\uD83D\uDC3C","\uD83D\uDC28","\uD83D\uDC2F","\uD83E\uDD81","\uD83D\uDC2E","\uD83D\uDC37","\uD83D\uDC38","\uD83D\uDC35","\uD83D\uDC14","\uD83D\uDC27","\uD83E\uDD86","\uD83E\uDD89","\uD83E\uDD84"];
-  var P={N:8,K:4,interval:5,bursts:1,speed:1,idMethod:"num",full:false,thick:0.9,size:640};
-  var segs=[],idLabels=[],ringTh=0,pulse=0,lastSwitch=0,lastT=0;
+  var MODES=["half","full","portrait"];
+  var P={N:8,K:4,interval:5,bursts:1,speed:1,idMethod:"num",mode:"half",thick:0.9,size:640};
+  var segs=[],idLabels=[],ringTh=0,pulse=0,lastSwitch=0,lastT=0,PHI=0;
 
   function polar(r,deg){var a=(deg-90)*Math.PI/180;return [CX+r*Math.cos(a),CY+r*Math.sin(a)];}
   function sector(a0,a1,rIn,rOut){
@@ -215,7 +233,12 @@
         p.setAttribute("d",sector(a0,a0+w,rIn,rOut));
         p.setAttribute("fill",hue(i)); p.setAttribute("opacity","0.2");
         arcsG.appendChild(p); segs.push({path:p,start:a0,width:w});
-        var pt=polar(rMid,a0+w/2), fs=fsMax, arcPx=w*Math.PI/180*rMid;
+        // In the split (half/portrait) modes only one semicircle is visible, so for a
+        // wide section the geometric midpoint can sit in the hidden half right as the
+        // section reaches the pointer. Bias the label toward the leading edge (a0) so
+        // the identifier is on-screen when the section starts; full circle stays centred.
+        var lblOff=(P.mode==="full")?w/2:Math.min(w/2,60);
+        var pt=polar(rMid,a0+lblOff), fs=fsMax, arcPx=w*Math.PI/180*rMid;
         if(fs>arcPx*0.72) fs=Math.max(5,arcPx*0.72);
         var t=document.createElementNS(NS,"text");
         t.setAttribute("x",pt[0]); t.setAttribute("y",pt[1]);
@@ -234,19 +257,21 @@
   function paint(eff){
     var iv=P.interval*60, slot=360/P.N;
     var pointer=((eff/iv*slot)%360+360)%360;
-    arcsG.setAttribute("transform","rotate("+(-pointer).toFixed(3)+" "+CX+" "+CY+")");
+    // PHI is where the pointer sits (top for half/full, side for portrait); the wheel
+    // rotates so the active arc-angle lands under it, and labels counter-rotate upright.
+    arcsG.setAttribute("transform","rotate("+(PHI-pointer).toFixed(3)+" "+CX+" "+CY+")");
     for(var j=0;j<segs.length;j++){
       var s=segs[j], delta=((pointer-s.start)%360+360)%360;
       if(delta<s.width){var ramp=Math.min(6,s.width/2),edge=Math.min(delta,s.width-delta),k=ramp>0?Math.min(1,edge/ramp):1;
         s.path.setAttribute("opacity",(0.55+0.45*k).toFixed(3));}
       else s.path.setAttribute("opacity","0.2");
     }
-    var pr=pointer.toFixed(3);
+    var pr=(pointer-PHI).toFixed(3);
     for(var m=0;m<idLabels.length;m++){var L=idLabels[m];
       L.el.setAttribute("transform","rotate("+pr+" "+L.tx+" "+L.ty+")");}
     var sc=reduce?1:(1+pulse*0.5),px=CX,py=CY-R_OUT-8;
-    ptrG.setAttribute("transform","translate("+px+" "+py+") scale("+sc.toFixed(3)+") translate("+(-px)+" "+(-py)+")");
-    countEl.textContent=fmt(iv-(eff%iv));
+    ptrG.setAttribute("transform","rotate("+PHI+" "+CX+" "+CY+") translate("+px+" "+py+") scale("+sc.toFixed(3)+") translate("+(-px)+" "+(-py)+")");
+    var t=fmt(iv-(eff%iv)); countEl.textContent=t; cornerEl.textContent=t;
   }
   function loop(){
     var eff=Date.now()/1000*P.speed, iv=P.interval*60, sw=Math.floor(eff/iv);
@@ -257,19 +282,36 @@
   }
 
   function applyLayout(){
-    var full=P.full;
-    CY=full?200:190;
-    svg.setAttribute("viewBox",full?"0 0 400 400":"0 0 400 196");
-    el("wrap").setAttribute("clip-path",full?"none":"url(#top)");
-    el("base").setAttribute("display",full?"none":"inline");
+    var m=P.mode;
+    // Centre, pointer angle (PHI) and viewBox per mode:
+    //   half     — top pointer, horizontal split, show top semicircle
+    //   full     — top pointer, whole circle
+    //   portrait — left pointer, vertical split, show left semicircle (tall layout)
+    if(m==="portrait"){ CX=190; CY=200; PHI=270; }
+    else { CX=200; CY=(m==="full")?200:190; PHI=0; }
+    svg.setAttribute("viewBox", m==="full"?"0 0 400 400" : m==="portrait"?"0 0 196 400" : "0 0 400 196");
+    el("wrap").setAttribute("clip-path", m==="full"?"none":"url(#top)");
+    // Clip to the visible semicircle: top half for "half", left half for "portrait".
+    if(m==="portrait"){ el("clip").setAttribute("width",CX); el("clip").setAttribute("height",400); }
+    else { el("clip").setAttribute("width",400); el("clip").setAttribute("height",CY); }
+    el("base").setAttribute("display", m==="full"?"none":"inline");
+    if(m==="portrait"){ el("base").setAttribute("x1",CX); el("base").setAttribute("y1",30); el("base").setAttribute("x2",CX); el("base").setAttribute("y2",370); }
+    else { el("base").setAttribute("x1",30); el("base").setAttribute("y1",CY); el("base").setAttribute("x2",370); el("base").setAttribute("y2",CY); }
+    el("surface").setAttribute("cx",CX); el("rimIn").setAttribute("cx",CX); el("rimOut").setAttribute("cx",CX);
     el("surface").setAttribute("cy",CY); el("rimIn").setAttribute("cy",CY); el("rimOut").setAttribute("cy",CY);
-    el("base").setAttribute("y1",CY); el("base").setAttribute("y2",CY);
-    if(full){el("count").setAttribute("y",CY+10);}
-    else{el("count").setAttribute("y",CY-32);}
+    el("hit").setAttribute("cx",CX); el("hit").setAttribute("cy",CY);
+    // Full circle keeps the emphasized timer in the centre of the dial; the split modes
+    // hide it and show a small, muted timer pinned to the page's lower-left corner.
+    var full=(m==="full"), cnt=el("count");
+    cnt.setAttribute("x",CX); cnt.setAttribute("y",CY+10);
+    cnt.style.display=full?"":"none";
+    el("cornerCount").hidden=full;
     build();
   }
 
-  function applySize(){el("dial").style.width=P.size+"px";}
+  // Width drives px size; portrait is the tall variant, so scale by its narrow aspect
+  // (196/400) to keep its long edge comparable to the other modes at the same setting.
+  function applySize(){el("dial").style.width=(P.mode==="portrait"?Math.round(P.size*196/400):P.size)+"px";}
 
   function clampDeps(){
     el("K").max=P.N; if(P.K>P.N){P.K=P.N;el("K").value=P.N;}
@@ -283,7 +325,6 @@
   el("S").addEventListener("input",function(){P.bursts=+this.value;clampDeps();P.bursts=+el("S").value;labels();build();});
   el("SZ").addEventListener("input",function(){P.size=+this.value;applySize();labels();});
   el("idsel").addEventListener("change",function(){P.idMethod=this.value;build();});
-  el("whole").addEventListener("change",function(){P.full=this.checked;applyLayout();});
   function setSpeed(b){P.speed=+b.getAttribute("data-x");var kids=el("speed").children;
     for(var i=0;i<kids.length;i++)kids[i].className=kids[i]===b?"on":"";}
   el("speed").addEventListener("click",function(e){var b=e.target.closest("button");if(b)setSpeed(b);});
@@ -292,31 +333,69 @@
     for(var i=0;i<kids.length;i++){var on=+kids[i].getAttribute("data-x")===P.speed;kids[i].className=on?"on":"";if(on)found=true;}
     if(!found){P.speed=1;kids[0].className="on";}}
 
+  // Shape: half / full / portrait, settable from the segmented control or by tapping
+  // the centre of the dial (which cycles through the modes).
+  function setMode(m){P.mode=(MODES.indexOf(m)<0)?"half":m;applyModeUI();applySize();applyLayout();}
+  function applyModeUI(){var kids=el("mode").children;
+    for(var i=0;i<kids.length;i++)kids[i].className=(kids[i].getAttribute("data-m")===P.mode)?"on":"";}
+  el("mode").addEventListener("click",function(e){var b=e.target.closest("button");if(b)setMode(b.getAttribute("data-m"));});
+  el("hit").addEventListener("click",function(){setMode(MODES[(MODES.indexOf(P.mode)+1)%MODES.length]);});
+
   var gear=el("gear"),panel=el("panel");
   gear.addEventListener("click",function(){var h=panel.hidden;panel.hidden=!h;gear.setAttribute("aria-expanded",String(h));});
 
-  // ---- Seed settings from query params (round-trips with the QR link) ----
-  function clampInt(v,min,max,def){v=parseInt(v,10);if(isNaN(v))return def;return Math.max(min,Math.min(max,v));}
+  // ---- Config codec: pack every setting into one tight base36 param ("c") ----
+  // Each field maps a setting to a 0-based index in a fixed range (`c` = #values);
+  // values are folded into one integer via mixed-radix, so the same FIELDS list
+  // drives both pack and unpack and stays in sync.
+  var SPEEDS=[1,60], IDS=["num","alpha","animal"];
+  var FIELDS=[
+    {c:19, enc:function(){return P.N-2;},        dec:function(i){P.N=i+2;}},
+    {c:20, enc:function(){return P.K-1;},        dec:function(i){P.K=i+1;}},
+    {c:9,  enc:function(){return P.interval-2;}, dec:function(i){P.interval=i+2;}},
+    {c:20, enc:function(){return P.bursts-1;},   dec:function(i){P.bursts=i+1;}},
+    {c:2,  enc:function(){return Math.max(0,SPEEDS.indexOf(P.speed));}, dec:function(i){P.speed=SPEEDS[i];}},
+    {c:3,  enc:function(){return Math.max(0,IDS.indexOf(P.idMethod));}, dec:function(i){P.idMethod=IDS[i];}},
+    {c:3,  enc:function(){return Math.max(0,MODES.indexOf(P.mode));}, dec:function(i){P.mode=MODES[i];}}
+    // NB: circle size and dark mode are deliberately excluded — they are local
+    // viewing preferences, not part of the shared config the QR encodes.
+  ];
+  function packConfig(){
+    var acc=0;
+    for(var i=0;i<FIELDS.length;i++){
+      var idx=Math.max(0,Math.min(FIELDS[i].c-1,FIELDS[i].enc()));
+      acc=acc*FIELDS[i].c+idx;
+    }
+    return acc.toString(36);
+  }
+  function unpackConfig(str){
+    var acc=parseInt(str,36);
+    if(isNaN(acc)||acc<0)return false;
+    for(var i=FIELDS.length-1;i>=0;i--){ FIELDS[i].dec(acc%FIELDS[i].c); acc=Math.floor(acc/FIELDS[i].c); }
+    return true;
+  }
   function seedFromParams(){
     var q;try{q=new URLSearchParams(location.search);}catch(e){return;}
-    if(!q.toString())return;
-    if(q.has("n"))P.N=clampInt(q.get("n"),+el("N").min,+el("N").max,P.N);
-    if(q.has("k"))P.K=clampInt(q.get("k"),+el("K").min,20,P.K);
-    if(q.has("i"))P.interval=clampInt(q.get("i"),+el("I").min,+el("I").max,P.interval);
-    if(q.has("s"))P.bursts=clampInt(q.get("s"),+el("S").min,20,P.bursts);
-    if(q.has("v"))P.speed=clampInt(q.get("v"),1,60,P.speed);
-    if(q.has("sz")){var sz=clampInt(q.get("sz"),+el("SZ").min,+el("SZ").max,P.size);P.size=Math.round(sz/20)*20;}
-    if(q.has("id")){var m=q.get("id");if(m==="num"||m==="alpha"||m==="animal")P.idMethod=m;}
-    if(q.has("full"))P.full=(q.get("full")==="1"||q.get("full")==="true");
+    if(!q.has("c")||!unpackConfig(q.get("c")))return;
     el("N").value=P.N;el("K").value=P.K;el("I").value=P.interval;el("S").value=P.bursts;
-    el("SZ").value=P.size;el("idsel").value=P.idMethod;el("whole").checked=P.full;
+    el("idsel").value=P.idMethod;
   }
+
+  // ---- Dark mode: local viewing preference, persisted but never shared via QR ----
+  var darkChk=el("dark"),root=document.documentElement,storedTheme=null;
+  try{storedTheme=localStorage.getItem("pw-theme");}catch(e){}
+  function sysDark(){try{return matchMedia("(prefers-color-scheme:dark)").matches;}catch(e){return false;}}
+  if(storedTheme==="dark"||storedTheme==="light")root.setAttribute("data-theme",storedTheme);
+  darkChk.checked=storedTheme?(storedTheme==="dark"):sysDark();
+  darkChk.addEventListener("change",function(){
+    var v=this.checked?"dark":"light";root.setAttribute("data-theme",v);
+    try{localStorage.setItem("pw-theme",v);}catch(e){}
+  });
 
   // ---- QR share: encode the current settings into the page URL ----
   function settingsURL(){
-    var u=new URL(location.href);u.search="";var p=u.searchParams;
-    p.set("n",P.N);p.set("k",P.K);p.set("i",P.interval);p.set("s",P.bursts);
-    p.set("v",P.speed);p.set("id",P.idMethod);p.set("full",P.full?1:0);p.set("sz",P.size);
+    var u=new URL(location.href);u.search="";
+    u.searchParams.set("c",packConfig());
     return u.toString();
   }
   function buildQR(text){
@@ -333,7 +412,7 @@
   document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!qrModal.hidden)closeQR();});
 
   seedFromParams();
-  clampDeps(); applySize(); applyLayout(); labels(); applySpeedUI();
+  clampDeps(); applySize(); applyLayout(); labels(); applySpeedUI(); applyModeUI();
   lastSwitch=Math.floor(Date.now()/1000*P.speed/(P.interval*60));
   requestAnimationFrame(loop);
 })();
