@@ -15,7 +15,12 @@
     --shadow:0 10px 34px rgba(20,18,40,.16);
     --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
     --sans:"Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif;
+    --ui:1; /* scale factor for the tools cluster (buttons + menus), grows on large screens */
   }
+  /* Scale the controls up on roomy screens (min-height guards keep tall menus on-screen). */
+  @media (min-width:1200px) and (min-height:760px){:root{--ui:1.18}}
+  @media (min-width:1700px) and (min-height:900px){:root{--ui:1.35}}
+  @media (min-width:2300px) and (min-height:1100px){:root{--ui:1.55}}
   /* Dark palette: applied automatically when the system prefers dark (unless the
      user forced light), and always when the user explicitly toggles dark. */
   @media (prefers-color-scheme:dark){
@@ -45,10 +50,33 @@
      also need an explicit colour-emoji font stack. */
   .id-emoji{font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
 
-  .tools{position:fixed;top:18px;right:18px;z-index:5;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+  .tools{position:fixed;top:18px;right:18px;z-index:5;display:flex;flex-direction:column;align-items:flex-end;gap:10px;
+         transform-origin:100% 0;transform:scale(var(--ui))}
   .gear{width:42px;height:42px;border-radius:11px;border:1px solid var(--border);background:var(--surface);
         color:var(--text);display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow)}
   .gear:hover{border-color:var(--muted)}
+  .tool-row{display:flex;gap:10px}
+  /* Focus button: shows a crosshair when idle, or the focused section's label glyph. */
+  .fbtn .fic{display:grid;place-items:center;width:20px;height:20px}
+  .fbtn .glyph{font-weight:700;font-size:16px;line-height:1}
+  .fbtn .glyph.emoji{font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;font-weight:400;font-size:18px}
+  /* When a section is focused, --seccol / --seccol-soft are set to that section's colour. */
+  .fbtn.active{border-color:var(--seccol,var(--accent));color:var(--seccol,var(--accent))}
+  /* "live" = the focused section is currently active (under the now line). */
+  .fbtn.live{border-color:var(--seccol,var(--accent));background:var(--seccol-soft,var(--accent-soft))}
+  @keyframes fpulse{0%,100%{box-shadow:var(--shadow)}50%{box-shadow:0 0 0 5px var(--seccol-soft,var(--accent-soft)),var(--shadow)}}
+  @media (prefers-reduced-motion:no-preference){.fbtn.live{animation:fpulse 1.5s ease-in-out infinite}}
+  .focus-menu{width:auto;min-width:0;gap:12px}
+  .fm-grid{display:grid;grid-template-columns:repeat(5,34px);gap:6px}
+  .fm-grid button{height:34px;border:1px solid var(--border);background:transparent;color:var(--text);
+    border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;font-family:var(--sans);padding:0}
+  .fm-grid button.emoji{font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;font-weight:400;font-size:17px}
+  .fm-grid button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+  .fm-grid button:hover{border-color:var(--muted)}
+  .fm-clear{font-family:var(--sans);font-size:12.5px;padding:8px 0;border:1px solid var(--border);
+    background:transparent;color:var(--muted);border-radius:8px;cursor:pointer}
+  .fm-clear:hover{border-color:var(--muted)}
+  .fm-clear[hidden]{display:none}
   .panel{width:272px;max-width:calc(100vw - 36px);background:var(--surface);border:1px solid var(--border);
          border-radius:14px;padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:16px;
          max-height:calc(100vh - 96px);max-height:calc(100dvh - 96px);overflow-y:auto;overscroll-behavior:contain}
@@ -94,12 +122,23 @@
   <h1 class="sr-only">Phase Wheel</h1>
 
   <div class="tools" id="tools">
-    <button class="gear" id="gear" aria-label="Settings" aria-expanded="false">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
-        <line x1="4" y1="8.5" x2="20" y2="8.5"/><circle cx="9" cy="8.5" r="2.4" fill="var(--surface)"/>
-        <line x1="4" y1="15.5" x2="20" y2="15.5"/><circle cx="15" cy="15.5" r="2.4" fill="var(--surface)"/>
-      </svg>
-    </button>
+    <div class="tool-row">
+      <button class="gear fbtn" id="focusBtn" aria-label="Focus a section" aria-expanded="false" aria-haspopup="true">
+        <span class="fic" id="focusIcon"></span>
+      </button>
+      <button class="gear" id="gear" aria-label="Settings" aria-expanded="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <line x1="4" y1="8.5" x2="20" y2="8.5"/><circle cx="9" cy="8.5" r="2.4" fill="var(--surface)"/>
+          <line x1="4" y1="15.5" x2="20" y2="15.5"/><circle cx="15" cy="15.5" r="2.4" fill="var(--surface)"/>
+        </svg>
+      </button>
+    </div>
+    <div class="panel focus-menu" id="focusMenu" hidden role="menu" aria-label="Focus a section">
+      <div class="grp-h">Focus a section</div>
+      <div class="fm-grid" id="fmGrid"></div>
+      <div class="row tog"><span class="name">Hide other sections</span><input type="checkbox" id="solo"></div>
+      <button class="fm-clear" id="fmClear" type="button" hidden>Deselect</button>
+    </div>
     <div class="panel" id="panel" hidden>
       <div class="grp">
         <div class="grp-h">Sections</div>
@@ -224,8 +263,9 @@
   var svg=el("svg"),arcsG=el("arcs"),ptrG=el("ptr"),countEl=el("count"),cornerEl=el("cornerCount");
   var ANIMALS=["\uD83D\uDC36","\uD83D\uDC31","\uD83D\uDC2D","\uD83D\uDC39","\uD83D\uDC30","\uD83E\uDD8A","\uD83D\uDC3B","\uD83D\uDC3C","\uD83D\uDC28","\uD83D\uDC2F","\uD83E\uDD81","\uD83D\uDC2E","\uD83D\uDC37","\uD83D\uDC38","\uD83D\uDC35","\uD83D\uDC14","\uD83D\uDC27","\uD83E\uDD86","\uD83E\uDD89","\uD83E\uDD84"];
   var MODES=["half","full","portrait"];
-  var P={N:8,K:4,interval:5,bursts:1,speed:1,idMethod:"num",mode:"half",labelPos:"center",thick:0.9,size:85};
+  var P={N:8,K:4,interval:5,bursts:1,speed:1,idMethod:"num",mode:"half",labelPos:"center",thick:0.9,size:85,focus:-1,solo:false};
   var segs=[],idLabels=[],ringTh=0,pulse=0,lastSwitch=0,lastT=0,PHI=0;
+  var CROSSHAIR='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>';
 
   function polar(r,deg){var a=(deg-90)*Math.PI/180;return [CX+r*Math.cos(a),CY+r*Math.sin(a)];}
   function norm180(a){a=((a+180)%360+360)%360-180;return a;}
@@ -234,7 +274,7 @@
     return "M"+o1[0]+" "+o1[1]+" A"+rOut+" "+rOut+" 0 "+lg+" 1 "+o2[0]+" "+o2[1]+
            " L"+i2[0]+" "+i2[1]+" A"+rIn+" "+rIn+" 0 "+lg+" 0 "+i1[0]+" "+i1[1]+" Z";
   }
-  function hue(i){var h=i*360/P.N,L=52-7*Math.cos((h-65)*Math.PI/180);return "hsl("+h.toFixed(1)+" 60% "+L.toFixed(1)+"%)";}
+  function hue(i,a){var h=i*360/P.N,L=52-7*Math.cos((h-65)*Math.PI/180);return "hsl("+h.toFixed(1)+" 60% "+L.toFixed(1)+"%"+(a!=null?" / "+a:"")+")";}
   function ident(i){
     if(P.idMethod==="none") return "";
     if(P.idMethod==="alpha") return String.fromCharCode(65+(i%26));
@@ -257,17 +297,23 @@
     arcsG.innerHTML=""; segs=[]; idLabels=[];
     ringTh=(R_OUT-R_IN)/P.N;
     var slot=360/P.N, runs=basePattern();
-    var th=ringTh*P.thick;
+    // Isolate mode: when a section is focused and "hide others" is on, draw only that ring,
+    // expanded to fill the whole annulus as one wide band.
+    var solo=(P.solo&&P.focus>=0);
     for(var i=0;i<P.N;i++){
-      var c=R_OUT-(i+0.5)*ringTh, rOut=c+th/2, rIn=c-th/2, rMid=c, lbl=ident(i);
-      var fsMax=Math.max(6,Math.min(th*0.82,16));
+      if(solo&&i!==P.focus) continue;
+      var dim=(P.focus>=0&&i!==P.focus); // de-emphasise non-focused rings (not used in solo)
+      var rOut,rIn,rMid;
+      if(solo){ rOut=R_OUT; rIn=R_IN; rMid=(R_OUT+R_IN)/2; }
+      else { var c=R_OUT-(i+0.5)*ringTh, th=ringTh*P.thick; rOut=c+th/2; rIn=c-th/2; rMid=c; }
+      var lbl=ident(i), fsMax=Math.max(6,Math.min((rOut-rIn)*0.82,solo?40:16));
       for(var r=0;r<runs.length;r++){
         var a0=(runs[r].start+i)*slot, w=Math.min(359.4,runs[r].len*slot);
         var p=document.createElementNS(NS,"path");
         p.setAttribute("d",sector(a0,a0+w,rIn,rOut));
         p.setAttribute("fill",hue(i)); p.setAttribute("opacity","0.2");
-        arcsG.appendChild(p); segs.push({path:p,start:a0,width:w});
-        if(lbl==="") continue; // "none" identifier method — no labels at all
+        arcsG.appendChild(p); segs.push({path:p,start:a0,width:w,ring:i});
+        if(lbl===""||solo) continue; // "none" identifier method, or isolate mode — no labels
         // Label sits at the segment midpoint by default; paint() may reposition it per
         // frame for the "edge" / "now" label modes (see P.labelPos).
         var pt=polar(rMid,a0+w/2), fs=fsMax, arcPx=w*Math.PI/180*rMid;
@@ -277,6 +323,7 @@
         t.setAttribute("text-anchor","middle"); t.setAttribute("dominant-baseline","central");
         t.setAttribute("font-size",fs.toFixed(1)); t.setAttribute("stroke-width",(fs*0.16).toFixed(2));
         t.setAttribute("class",P.idMethod==="animal"?"id-emoji":"id-text"); t.textContent=lbl;
+        if(dim)t.setAttribute("opacity","0.35");
         arcsG.appendChild(t); idLabels.push({el:t,tx:pt[0],ty:pt[1],a0:a0,w:w,rMid:rMid,fs:fs});
       }
     }
@@ -291,7 +338,7 @@
   }
   // Zero-padded MM:SS so the readout is always the same width as the "88:88" backdrop and
   // overlays it exactly (the segment font's digits are monospaced, the colon is narrow).
-  function fmt(s){s=Math.max(0,Math.ceil(s));return ("0"+Math.floor(s/60)).slice(-2)+":"+("0"+(s%60)).slice(-2);}
+  function fmt(s){s=Math.max(0,Math.ceil(s));var m=Math.floor(s/60);return (m<10?"0"+m:""+m)+":"+("0"+(s%60)).slice(-2);}
 
   function paint(eff){
     var iv=P.interval*60, slot=360/P.N;
@@ -303,15 +350,25 @@
     // PHI is where the pointer sits (top for half/full, side for portrait); the wheel
     // rotates so the active arc-angle lands under it, and labels counter-rotate upright.
     arcsG.setAttribute("transform","rotate("+(PHI-pointer).toFixed(3)+" "+CX+" "+CY+")");
+    var focusLive=false, focusBnd=360; // nearest upcoming state-change of the focused ring, in degrees
     for(var j=0;j<segs.length;j++){
-      var s=segs[j], delta=((pointer-s.start)%360+360)%360;
+      var s=segs[j], delta=((pointer-s.start)%360+360)%360, op;
       if(delta<s.width){var ramp=Math.min(6,s.width/2),edge=Math.min(delta,s.width-delta),k=ramp>0?Math.min(1,edge/ramp):1;
         // Only the segment about to end blinks — the one whose trailing edge crosses the
         // now line at the next switch (within one slot of fully passing it).
         var ending=delta>=s.width-slot;
-        s.path.setAttribute("opacity",(blinkOff&&ending?0.18:(0.55+0.45*k)).toFixed(3));}
-      else s.path.setAttribute("opacity","0.2");
+        op=blinkOff&&ending?0.18:(0.55+0.45*k);
+        if(P.focus>=0&&s.ring===P.focus)focusLive=true;}
+      else op=0.2;
+      if(P.focus>=0&&s.ring!==P.focus)op*=0.3; // de-emphasise everything but the focused ring
+      // For the focused ring, track the nearest on→off / off→on boundary ahead of the now line.
+      if(P.focus>=0&&s.ring===P.focus){
+        var bIn=((s.start-pointer)%360+360)%360, bOut=((s.start+s.width-pointer)%360+360)%360;
+        if(bIn>0&&bIn<focusBnd)focusBnd=bIn; if(bOut>0&&bOut<focusBnd)focusBnd=bOut;
+      }
+      s.path.setAttribute("opacity",op.toFixed(3));
     }
+    if(P.focus>=0)setFocusLive(focusLive);
     // Label placement: "center" is static (set in build); "now" pins the label to the
     // pointer line; "edge" keeps the label inside both the visible window and its own
     // segment, each pulled in by a margin (~the label's half-height) so the label never sits
@@ -335,7 +392,10 @@
       L.el.setAttribute("transform","rotate("+pr+" "+L.tx+" "+L.ty+")");}
     var sc=reduce?1:(1+pulse*0.5),px=CX,py=CY-R_OUT-8;
     ptrG.setAttribute("transform","rotate("+PHI+" "+CX+" "+CY+") translate("+px+" "+py+") scale("+sc.toFixed(3)+") translate("+(-px)+" "+(-py)+")");
-    var t=fmt(iv-(eff%iv)); countEl.textContent=t; cornerEl.textContent=t;
+    // In focus mode the countdown tracks the focused section's own next switch (it may stay
+    // on/off across several global intervals); otherwise it's the global interval remaining.
+    var remSec=(P.focus>=0)?focusBnd/slot*iv:iv-(eff%iv);
+    var t=fmt(remSec); countEl.textContent=t; cornerEl.textContent=t;
   }
   function loop(){
     var eff=Date.now()/1000*P.speed, iv=P.interval*60, sw=Math.floor(eff/iv);
@@ -398,7 +458,7 @@
     if(P.bursts>bmax){P.bursts=bmax;el("S").value=bmax;}
   }
   function labels(){el("vN").textContent=P.N;el("vK").textContent=P.K;el("vI").textContent=P.interval+" min";el("vS").textContent=P.bursts;el("vSZ").textContent=P.size+"%";}
-  el("N").addEventListener("input",function(){P.N=+this.value;clampDeps();P.K=+el("K").value;P.bursts=+el("S").value;labels();build();});
+  el("N").addEventListener("input",function(){P.N=+this.value;clampDeps();P.K=+el("K").value;P.bursts=+el("S").value;if(P.focus>=P.N)P.focus=-1;labels();build();updateFocusIcon();});
   el("K").addEventListener("input",function(){P.K=+this.value;clampDeps();P.bursts=+el("S").value;labels();build();});
   el("I").addEventListener("input",function(){P.interval=+this.value;labels();});
   el("S").addEventListener("input",function(){P.bursts=+this.value;clampDeps();P.bursts=+el("S").value;labels();build();});
@@ -421,7 +481,7 @@
   // Re-fit when the viewport changes (resize, rotate, browser-chrome show/hide).
   window.addEventListener("resize",applySize);
   if(window.visualViewport)window.visualViewport.addEventListener("resize",applySize);
-  el("idsel").addEventListener("change",function(){P.idMethod=this.value;build();});
+  el("idsel").addEventListener("change",function(){P.idMethod=this.value;build();updateFocusIcon();});
   el("lblpos").addEventListener("change",function(){P.labelPos=this.value;build();});
   function setSpeed(b){P.speed=+b.getAttribute("data-x");var kids=el("speed").children;
     for(var i=0;i<kids.length;i++)kids[i].className=kids[i]===b?"on":"";}
@@ -440,10 +500,45 @@
   el("hit").addEventListener("click",function(){setMode(MODES[(MODES.indexOf(P.mode)+1)%MODES.length]);});
 
   var gear=el("gear"),panel=el("panel");
-  function setPanel(open){panel.hidden=!open;gear.setAttribute("aria-expanded",String(open));}
+  function setPanel(open){panel.hidden=!open;gear.setAttribute("aria-expanded",String(open));if(open)setFocusMenu(false);}
   gear.addEventListener("click",function(){setPanel(panel.hidden);});
-  // Close the panel when clicking/tapping anywhere outside the tools (gear + panel).
-  document.addEventListener("click",function(e){if(!panel.hidden&&!el("tools").contains(e.target))setPanel(false);});
+
+  // ---- Focus a section: fatten one ring, dim the rest; button mirrors its label & state ----
+  // The dropdown lists the current identifiers (numbers as a fallback when "None" is chosen).
+  var focusBtn=el("focusBtn"),focusMenu=el("focusMenu"),lastLive=null;
+  function focusIdent(i){return P.idMethod==="none"?String(i+1):ident(i);}
+  function updateFocusIcon(){
+    var ic=el("focusIcon");
+    if(P.focus<0){ic.innerHTML=CROSSHAIR;ic.className="fic";focusBtn.classList.remove("active","live");
+      focusBtn.style.removeProperty("--seccol");focusBtn.style.removeProperty("--seccol-soft");
+      focusBtn.setAttribute("aria-label","Focus a section");lastLive=null;el("fmClear").hidden=true;}
+    else{ic.textContent=focusIdent(P.focus);ic.className="fic glyph"+(P.idMethod==="animal"?" emoji":"");
+      focusBtn.style.setProperty("--seccol",hue(P.focus));focusBtn.style.setProperty("--seccol-soft",hue(P.focus,0.22));
+      focusBtn.classList.add("active");focusBtn.setAttribute("aria-label","Focused on section "+focusIdent(P.focus));
+      el("fmClear").hidden=false;}
+  }
+  function setFocusLive(live){if(live===lastLive)return;lastLive=live;
+    if(live)focusBtn.classList.add("live");else focusBtn.classList.remove("live");}
+  function setFocus(i){P.focus=(i===P.focus)?-1:i;build();updateFocusIcon();}
+  function buildFocusMenu(){
+    var g=el("fmGrid");g.innerHTML="";
+    for(var i=0;i<P.N;i++){
+      var b=document.createElement("button");b.type="button";b.setAttribute("data-i",i);
+      b.textContent=focusIdent(i);if(P.idMethod==="animal")b.className="emoji";
+      if(i===P.focus)b.classList.add("on");g.appendChild(b);
+    }
+  }
+  function setFocusMenu(open){if(open)buildFocusMenu();focusMenu.hidden=!open;
+    focusBtn.setAttribute("aria-expanded",String(open));if(open)setPanel(false);}
+  focusBtn.addEventListener("click",function(){setFocusMenu(focusMenu.hidden);});
+  el("fmGrid").addEventListener("click",function(e){var b=e.target.closest("button");
+    if(b){setFocus(+b.getAttribute("data-i"));setFocusMenu(false);}});
+  el("fmClear").addEventListener("click",function(){if(P.focus>=0)setFocus(P.focus);setFocusMenu(false);});
+  el("solo").addEventListener("change",function(){P.solo=this.checked;build();});
+
+  // Close the panel / focus menu when clicking/tapping outside the tools.
+  document.addEventListener("click",function(e){if(el("tools").contains(e.target))return;
+    if(!panel.hidden)setPanel(false);if(!focusMenu.hidden)setFocusMenu(false);});
 
   // ---- Config codec: pack every setting into one tight base36 param ("c") ----
   // Each field maps a setting to a 0-based index in a fixed range (`c` = #values);
@@ -484,6 +579,7 @@
   function syncUI(){
     el("N").value=P.N; el("K").value=P.K; el("I").value=P.interval; el("S").value=P.bursts;
     el("SZ").value=P.size; el("idsel").value=P.idMethod; el("lblpos").value=P.labelPos;
+    el("solo").checked=P.solo;
   }
 
   // ---- Dark mode: local viewing preference, persisted but never shared via QR ----
@@ -517,7 +613,7 @@
   document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!qrModal.hidden)closeQR();});
 
   seedFromParams();
-  clampDeps(); syncUI(); applySize(); applyLayout(); labels(); applySpeedUI(); applyModeUI();
+  clampDeps(); syncUI(); applySize(); applyLayout(); labels(); applySpeedUI(); applyModeUI(); updateFocusIcon();
   lastSwitch=Math.floor(Date.now()/1000*P.speed/(P.interval*60));
   paint(Date.now()/1000*P.speed); // render the correct rotated state before the first frame
   requestAnimationFrame(loop);
