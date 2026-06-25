@@ -4,6 +4,9 @@ Helps people jamming synchronize a rotation across a session.
 Open it on a phone, a laptop, or cast it to a screen the whole room can see. 
 Bring up a QR code to share the session with other devices.
 
+Born out of discussion and experimentation at the wonderful 
+[Kreativ Data](https://www.skogen.pm/groups/DnnWsyJX2cAHDh7Yu) study circle.
+
 ## How it works
 
 The wheel is divided into one ring per player. As time passes the wheel turns,
