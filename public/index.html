@@ -131,6 +131,14 @@
           </select>
         </div>
         <div class="row">
+          <div class="rt"><span class="name">Label position</span></div>
+          <select id="lblpos">
+            <option value="center">Centered</option>
+            <option value="edge">Edge (stay visible)</option>
+            <option value="now">At now line</option>
+          </select>
+        </div>
+        <div class="row">
           <div class="rt"><span class="name">Speed</span></div>
           <div class="seg-btns" id="speed">
             <button data-x="1">1&times;</button>
@@ -171,9 +179,9 @@
         <circle id="rimIn" cx="200" cy="190" r="83" fill="none" stroke="var(--border)" stroke-width="1"></circle>
         <circle id="rimOut" cx="200" cy="190" r="171" fill="none" stroke="var(--border)" stroke-width="1"></circle>
       </g>
+      <line id="tick" stroke="var(--text)" stroke-width="2" stroke-linecap="round"></line>
       <g id="ptr">
         <path id="tri" fill="var(--text)"></path>
-        <line id="tick" stroke="var(--text)" stroke-width="2" stroke-linecap="round"></line>
       </g>
       <text id="count" x="200" y="158" text-anchor="middle" class="rd-count">5:00</text>
       <circle id="hit" cx="200" cy="190" r="78" fill="transparent" style="cursor:pointer"><title>Tap to change shape</title></circle>
@@ -183,7 +191,7 @@
   <div class="corner-count" id="cornerCount" aria-hidden="true" hidden>5:00</div>
 </div>
 
-<script src="qrcode.js"></script>
+<script src="qrcode.js" defer></script>
 <script>
 (function(){
   var CX=200,CY=190,R_OUT=170,R_IN=82,NS="http://www.w3.org/2000/svg";
@@ -192,10 +200,11 @@
   var svg=el("svg"),arcsG=el("arcs"),ptrG=el("ptr"),countEl=el("count"),cornerEl=el("cornerCount");
   var ANIMALS=["\uD83D\uDC36","\uD83D\uDC31","\uD83D\uDC2D","\uD83D\uDC39","\uD83D\uDC30","\uD83E\uDD8A","\uD83D\uDC3B","\uD83D\uDC3C","\uD83D\uDC28","\uD83D\uDC2F","\uD83E\uDD81","\uD83D\uDC2E","\uD83D\uDC37","\uD83D\uDC38","\uD83D\uDC35","\uD83D\uDC14","\uD83D\uDC27","\uD83E\uDD86","\uD83E\uDD89","\uD83E\uDD84"];
   var MODES=["half","full","portrait"];
-  var P={N:8,K:4,interval:5,bursts:1,speed:1,idMethod:"num",mode:"half",thick:0.9,size:640};
+  var P={N:8,K:4,interval:5,bursts:1,speed:1,idMethod:"num",mode:"half",labelPos:"center",thick:0.9,size:640};
   var segs=[],idLabels=[],ringTh=0,pulse=0,lastSwitch=0,lastT=0,PHI=0;
 
   function polar(r,deg){var a=(deg-90)*Math.PI/180;return [CX+r*Math.cos(a),CY+r*Math.sin(a)];}
+  function norm180(a){a=((a+180)%360+360)%360-180;return a;}
   function sector(a0,a1,rIn,rOut){
     var o1=polar(rOut,a0),o2=polar(rOut,a1),i2=polar(rIn,a1),i1=polar(rIn,a0),lg=(a1-a0)>180?1:0;
     return "M"+o1[0]+" "+o1[1]+" A"+rOut+" "+rOut+" 0 "+lg+" 1 "+o2[0]+" "+o2[1]+
@@ -233,41 +242,62 @@
         p.setAttribute("d",sector(a0,a0+w,rIn,rOut));
         p.setAttribute("fill",hue(i)); p.setAttribute("opacity","0.2");
         arcsG.appendChild(p); segs.push({path:p,start:a0,width:w});
-        // In the split (half/portrait) modes only one semicircle is visible, so for a
-        // wide section the geometric midpoint can sit in the hidden half right as the
-        // section reaches the pointer. Bias the label toward the leading edge (a0) so
-        // the identifier is on-screen when the section starts; full circle stays centred.
-        var lblOff=(P.mode==="full")?w/2:Math.min(w/2,60);
-        var pt=polar(rMid,a0+lblOff), fs=fsMax, arcPx=w*Math.PI/180*rMid;
+        // Label sits at the segment midpoint by default; paint() may reposition it per
+        // frame for the "edge" / "now" label modes (see P.labelPos).
+        var pt=polar(rMid,a0+w/2), fs=fsMax, arcPx=w*Math.PI/180*rMid;
         if(fs>arcPx*0.72) fs=Math.max(5,arcPx*0.72);
         var t=document.createElementNS(NS,"text");
         t.setAttribute("x",pt[0]); t.setAttribute("y",pt[1]);
         t.setAttribute("text-anchor","middle"); t.setAttribute("dominant-baseline","central");
         t.setAttribute("font-size",fs.toFixed(1)); t.setAttribute("stroke-width",(fs*0.16).toFixed(2));
         t.setAttribute("class","id-text"); t.textContent=lbl;
-        arcsG.appendChild(t); idLabels.push({el:t,tx:pt[0],ty:pt[1]});
+        arcsG.appendChild(t); idLabels.push({el:t,tx:pt[0],ty:pt[1],a0:a0,w:w,rMid:rMid,mg:(fs*0.7/rMid)*180/Math.PI});
       }
     }
     el("tri").setAttribute("d","M"+(CX-8)+" "+(CY-R_OUT-15)+" L"+(CX+8)+" "+(CY-R_OUT-15)+" L"+CX+" "+(CY-R_OUT-2)+" Z");
-    el("tick").setAttribute("x1",CX); el("tick").setAttribute("y1",CY-R_OUT-2);
-    el("tick").setAttribute("x2",CX); el("tick").setAttribute("y2",CY-R_OUT+8);
+    // The "now" line spans the whole segment area (outer rim to inner rim), rotated to the
+    // pointer angle (PHI). It is hidden in the "now" label mode, where labels occupy it.
+    var tick=el("tick");
+    tick.setAttribute("x1",CX); tick.setAttribute("y1",CY-R_OUT-2);
+    tick.setAttribute("x2",CX); tick.setAttribute("y2",CY-R_IN);
+    tick.setAttribute("transform","rotate("+PHI+" "+CX+" "+CY+")");
+    tick.setAttribute("display",P.labelPos==="now"?"none":"inline");
   }
   function fmt(s){s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+":"+("0"+(s%60)).slice(-2);}
 
   function paint(eff){
     var iv=P.interval*60, slot=360/P.N;
     var pointer=((eff/iv*slot)%360+360)%360;
+    // Blink the active segments during the final 10s of the interval as a switch warning.
+    // Driven by real wall-clock time (eff/speed) so the ~2Hz rate is steady at any speed.
+    var rem=iv-(eff%iv), realT=eff/P.speed;
+    var blinkOff=!reduce && rem<=10 && (Math.floor(realT*4)%2===1);
     // PHI is where the pointer sits (top for half/full, side for portrait); the wheel
     // rotates so the active arc-angle lands under it, and labels counter-rotate upright.
     arcsG.setAttribute("transform","rotate("+(PHI-pointer).toFixed(3)+" "+CX+" "+CY+")");
     for(var j=0;j<segs.length;j++){
       var s=segs[j], delta=((pointer-s.start)%360+360)%360;
       if(delta<s.width){var ramp=Math.min(6,s.width/2),edge=Math.min(delta,s.width-delta),k=ramp>0?Math.min(1,edge/ramp):1;
-        s.path.setAttribute("opacity",(0.55+0.45*k).toFixed(3));}
+        s.path.setAttribute("opacity",(blinkOff?0.18:(0.55+0.45*k)).toFixed(3));}
       else s.path.setAttribute("opacity","0.2");
     }
-    var pr=(pointer-PHI).toFixed(3);
+    // Label placement: "center" is static (set in build); "now" pins the label to the
+    // pointer line (clamped within its segment); "edge" keeps it centred until that would
+    // leave the visible half, then slides it to the edge of the visible window.
+    var pr=(pointer-PHI).toFixed(3), dyn=(P.labelPos!=="center"), vis=(P.mode==="full")?180:90;
     for(var m=0;m<idLabels.length;m++){var L=idLabels[m];
+      if(dyn){
+        var ang;
+        if(P.labelPos==="now"){
+          ang=pointer; // pinned to the now line at all times, regardless of the segment
+        } else { // edge: centred while visible, else inset from the cut line on the near side
+          var sc=norm180(L.a0+L.w/2-pointer), ve=vis-L.mg;
+          var lo=Math.max(sc-L.w/2,Math.min(sc+L.w/2,Math.max(-ve,Math.min(ve,sc))));
+          ang=pointer+lo;
+        }
+        var pt=polar(L.rMid,ang); L.tx=pt[0]; L.ty=pt[1];
+        L.el.setAttribute("x",L.tx); L.el.setAttribute("y",L.ty);
+      }
       L.el.setAttribute("transform","rotate("+pr+" "+L.tx+" "+L.ty+")");}
     var sc=reduce?1:(1+pulse*0.5),px=CX,py=CY-R_OUT-8;
     ptrG.setAttribute("transform","rotate("+PHI+" "+CX+" "+CY+") translate("+px+" "+py+") scale("+sc.toFixed(3)+") translate("+(-px)+" "+(-py)+")");
@@ -325,6 +355,7 @@
   el("S").addEventListener("input",function(){P.bursts=+this.value;clampDeps();P.bursts=+el("S").value;labels();build();});
   el("SZ").addEventListener("input",function(){P.size=+this.value;applySize();labels();});
   el("idsel").addEventListener("change",function(){P.idMethod=this.value;build();});
+  el("lblpos").addEventListener("change",function(){P.labelPos=this.value;build();});
   function setSpeed(b){P.speed=+b.getAttribute("data-x");var kids=el("speed").children;
     for(var i=0;i<kids.length;i++)kids[i].className=kids[i]===b?"on":"";}
   el("speed").addEventListener("click",function(e){var b=e.target.closest("button");if(b)setSpeed(b);});
@@ -414,6 +445,7 @@
   seedFromParams();
   clampDeps(); applySize(); applyLayout(); labels(); applySpeedUI(); applyModeUI();
   lastSwitch=Math.floor(Date.now()/1000*P.speed/(P.interval*60));
+  paint(Date.now()/1000*P.speed); // render the correct rotated state before the first frame
   requestAnimationFrame(loop);
 })();
 </script>
