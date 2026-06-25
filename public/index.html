@@ -259,7 +259,7 @@
         t.setAttribute("text-anchor","middle"); t.setAttribute("dominant-baseline","central");
         t.setAttribute("font-size",fs.toFixed(1)); t.setAttribute("stroke-width",(fs*0.16).toFixed(2));
         t.setAttribute("class","id-text"); t.textContent=lbl;
-        arcsG.appendChild(t); idLabels.push({el:t,tx:pt[0],ty:pt[1],a0:a0,w:w,rMid:rMid,mg:(fs*0.7/rMid)*180/Math.PI});
+        arcsG.appendChild(t); idLabels.push({el:t,tx:pt[0],ty:pt[1],a0:a0,w:w,rMid:rMid,fs:fs,len:String(lbl).length});
       }
     }
     el("tri").setAttribute("d","M"+(CX-8)+" "+(CY-R_OUT-15)+" L"+(CX+8)+" "+(CY-R_OUT-15)+" L"+CX+" "+(CY-R_OUT-2)+" Z");
@@ -295,17 +295,31 @@
       else s.path.setAttribute("opacity","0.2");
     }
     // Label placement: "center" is static (set in build); "now" pins the label to the
-    // pointer line (clamped within its segment); "edge" keeps it centred until that would
-    // leave the visible half, then slides it to the edge of the visible window.
-    var pr=(pointer-PHI).toFixed(3), dyn=(P.labelPos!=="center"), vis=(P.mode==="full")?180:90;
+    // pointer line; "edge" holds the label flush against the cut line while its segment is in
+    // view, then slides it out — a touch ahead of the receding segment edge, so it clears the
+    // cut before the edge reaches it rather than lingering half-clipped on the line.
+    var pr=(pointer-PHI).toFixed(3), dyn=(P.labelPos!=="center");
     for(var m=0;m<idLabels.length;m++){var L=idLabels[m];
       if(dyn){
         var ang;
         if(P.labelPos==="now"){
           ang=pointer; // pinned to the now line at all times, regardless of the segment
-        } else { // edge: centred while visible, else inset from the cut line on the near side
-          var sc=norm180(L.a0+L.w/2-pointer), ve=vis-L.mg;
-          var lo=Math.max(sc-L.w/2,Math.min(sc+L.w/2,Math.max(-ve,Math.min(ve,sc))));
+        } else {
+          // "edge": the visible window is bounded by a straight cut (horizontal for half,
+          // vertical for portrait; full has none). The upright label box sits flush against
+          // that cut at offset ±ve = acos(dim/rMid) from the pointer, where dim is the box
+          // half-extent facing the cut (its height for half, its width for portrait). While
+          // the segment still spans the flush point the label stays there, fully visible;
+          // once an edge recedes past it the label rides that edge out, accelerated (GAIN)
+          // so it crosses the cut a couple of degrees ahead of the edge.
+          var sc=norm180(L.a0+L.w/2-pointer), ve, GAIN=3;
+          if(P.mode==="full"){ ve=180; }
+          else { var dim=(P.mode==="portrait")?L.fs*(0.32*L.len+0.12):L.fs*0.62;
+                 ve=Math.acos(Math.min(0.999,dim/L.rMid))*180/Math.PI; }
+          var e0=sc-L.w/2, e1=sc+L.w/2, lo;
+          if(e1<-ve)      lo=-ve+GAIN*(e1+ve);   // segment leaving toward the −cut
+          else if(e0>ve)  lo= ve+GAIN*(e0-ve);   // segment leaving toward the +cut
+          else            lo=Math.max(-ve,Math.min(ve,sc)); // flush / centred, fully visible
           ang=pointer+lo;
         }
         var pt=polar(L.rMid,ang); L.tx=pt[0]; L.ty=pt[1];
