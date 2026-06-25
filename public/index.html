@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>Phase Wheel</title>
 <style>
   @font-face{
@@ -27,11 +27,13 @@
         --border:rgba(255,255,255,.13);--accent:#8b83ef;--accent-soft:rgba(139,131,239,.18);
         --shadow:0 10px 34px rgba(0,0,0,.5)}
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%}
+  html,body{margin:0;height:100%;overflow:hidden}
   body{background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
   .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-  .app{position:relative;min-height:100vh;display:flex;align-items:safe center;justify-content:safe center;padding:24px;overflow:auto}
-  .dial{width:640px}
+  /* The app fills the viewport and never scrolls; the dial is sized to fit (see applySize). */
+  .app{position:relative;min-height:100vh;min-height:100dvh;display:flex;align-items:safe center;justify-content:safe center;padding:12px;overflow:hidden}
+  /* touch-action:none lets us own pinch gestures on the dial instead of the browser. */
+  .dial{width:640px;touch-action:none}
   .dial svg{display:block;width:100%;height:auto}
   .rd-count{font-family:"DSEG14",var(--mono);font-size:22px;font-weight:400;fill:var(--text)}
   .rd-bg{opacity:.13}
@@ -117,8 +119,8 @@
       <div class="grp">
         <div class="grp-h">Display</div>
         <div class="row">
-          <div class="rt"><span class="name">Circle size</span><span class="val" id="vSZ">640</span></div>
-          <input type="range" id="SZ" min="320" max="960" step="20" value="640">
+          <div class="rt"><span class="name">Circle size</span><span class="val" id="vSZ">85%</span></div>
+          <input type="range" id="SZ" min="20" max="100" step="5" value="85">
         </div>
         <div class="row">
           <div class="rt"><span class="name">Shape</span></div>
@@ -212,7 +214,7 @@
   var svg=el("svg"),arcsG=el("arcs"),ptrG=el("ptr"),countEl=el("count"),cornerEl=el("cornerCount");
   var ANIMALS=["\uD83D\uDC36","\uD83D\uDC31","\uD83D\uDC2D","\uD83D\uDC39","\uD83D\uDC30","\uD83E\uDD8A","\uD83D\uDC3B","\uD83D\uDC3C","\uD83D\uDC28","\uD83D\uDC2F","\uD83E\uDD81","\uD83D\uDC2E","\uD83D\uDC37","\uD83D\uDC38","\uD83D\uDC35","\uD83D\uDC14","\uD83D\uDC27","\uD83E\uDD86","\uD83E\uDD89","\uD83E\uDD84"];
   var MODES=["half","full","portrait"];
-  var P={N:8,K:4,interval:5,bursts:1,speed:1,idMethod:"num",mode:"half",labelPos:"center",thick:0.9,size:640};
+  var P={N:8,K:4,interval:5,bursts:1,speed:1,idMethod:"num",mode:"half",labelPos:"center",thick:0.9,size:85};
   var segs=[],idLabels=[],ringTh=0,pulse=0,lastSwitch=0,lastT=0,PHI=0;
 
   function polar(r,deg){var a=(deg-90)*Math.PI/180;return [CX+r*Math.cos(a),CY+r*Math.sin(a)];}
@@ -368,21 +370,47 @@
     build();
   }
 
-  // Width drives px size; portrait is the tall variant, so scale by its narrow aspect
-  // (196/400) to keep its long edge comparable to the other modes at the same setting.
-  function applySize(){el("dial").style.width=(P.mode==="portrait"?Math.round(P.size*232/400):P.size)+"px";}
+  // Largest dial width that fits the viewport without scrolling, for the current mode's
+  // viewBox aspect (height = width / aspect must also fit). P.size is a percentage of it, so
+  // 100% fills the screen on any display and the dial can never exceed it.
+  function fitMax(){
+    var vp=window.visualViewport, pad=16;
+    var vw=(vp?vp.width:document.documentElement.clientWidth)-pad*2;
+    var vh=(vp?vp.height:document.documentElement.clientHeight)-pad*2;
+    var ar=P.mode==="full"?1:(P.mode==="portrait"?232/400:400/208); // viewBox width/height
+    return Math.max(120,Math.min(vw,vh*ar));
+  }
+  function applySize(){el("dial").style.width=Math.round(fitMax()*P.size/100)+"px";}
 
   function clampDeps(){
     el("K").max=P.N; if(P.K>P.N){P.K=P.N;el("K").value=P.N;}
     var bmax=Math.max(1,Math.min(P.K,P.N-P.K)); el("S").max=bmax;
     if(P.bursts>bmax){P.bursts=bmax;el("S").value=bmax;}
   }
-  function labels(){el("vN").textContent=P.N;el("vK").textContent=P.K;el("vI").textContent=P.interval+" min";el("vS").textContent=P.bursts;el("vSZ").textContent=P.size;}
+  function labels(){el("vN").textContent=P.N;el("vK").textContent=P.K;el("vI").textContent=P.interval+" min";el("vS").textContent=P.bursts;el("vSZ").textContent=P.size+"%";}
   el("N").addEventListener("input",function(){P.N=+this.value;clampDeps();P.K=+el("K").value;P.bursts=+el("S").value;labels();build();});
   el("K").addEventListener("input",function(){P.K=+this.value;clampDeps();P.bursts=+el("S").value;labels();build();});
   el("I").addEventListener("input",function(){P.interval=+this.value;labels();});
   el("S").addEventListener("input",function(){P.bursts=+this.value;clampDeps();P.bursts=+el("S").value;labels();build();});
   el("SZ").addEventListener("input",function(){P.size=+this.value;applySize();labels();});
+
+  // ---- Zoom: pinch / ⌘-wheel resize the circle (clamped to the screen), never the page ----
+  function setSize(pct){P.size=Math.max(20,Math.min(100,Math.round(pct)));el("SZ").value=P.size;applySize();labels();}
+  function touchDist(t){var a=t[0],b=t[1];return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);}
+  var pinch=null,gActive=false,gBase=85;
+  // iOS Safari pinch (non-standard gesture events give a clean cumulative scale factor).
+  document.addEventListener("gesturestart",function(e){e.preventDefault();gActive=true;gBase=P.size;},{passive:false});
+  document.addEventListener("gesturechange",function(e){e.preventDefault();setSize(gBase*e.scale);},{passive:false});
+  document.addEventListener("gestureend",function(e){e.preventDefault();gActive=false;},{passive:false});
+  // Generic two-finger pinch (Android/Chrome/etc.). preventDefault stops the page zooming.
+  document.addEventListener("touchstart",function(e){if(e.touches.length===2&&!gActive)pinch={d0:touchDist(e.touches),s0:P.size};},{passive:false});
+  document.addEventListener("touchmove",function(e){if(e.touches.length===2){e.preventDefault();if(!gActive&&pinch)setSize(pinch.s0*touchDist(e.touches)/pinch.d0);}},{passive:false});
+  document.addEventListener("touchend",function(e){if(e.touches.length<2)pinch=null;});
+  // Trackpad pinch and ctrl/⌘+wheel zoom on desktop.
+  window.addEventListener("wheel",function(e){if(e.ctrlKey){e.preventDefault();setSize(P.size-e.deltaY*0.4);}},{passive:false});
+  // Re-fit when the viewport changes (resize, rotate, browser-chrome show/hide).
+  window.addEventListener("resize",applySize);
+  if(window.visualViewport)window.visualViewport.addEventListener("resize",applySize);
   el("idsel").addEventListener("change",function(){P.idMethod=this.value;build();});
   el("lblpos").addEventListener("change",function(){P.labelPos=this.value;build();});
   function setSpeed(b){P.speed=+b.getAttribute("data-x");var kids=el("speed").children;
