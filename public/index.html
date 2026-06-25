@@ -135,6 +135,7 @@
             <option value="num">Numbers</option>
             <option value="alpha">Letters</option>
             <option value="animal">Animals</option>
+            <option value="none">None</option>
           </select>
         </div>
         <div class="row">
@@ -220,6 +221,7 @@
   }
   function hue(i){var h=i*360/P.N,L=52-7*Math.cos((h-65)*Math.PI/180);return "hsl("+h.toFixed(1)+" 60% "+L.toFixed(1)+"%)";}
   function ident(i){
+    if(P.idMethod==="none") return "";
     if(P.idMethod==="alpha") return String.fromCharCode(65+(i%26));
     if(P.idMethod==="animal") return ANIMALS[i%ANIMALS.length];
     return String(i+1);
@@ -250,6 +252,7 @@
         p.setAttribute("d",sector(a0,a0+w,rIn,rOut));
         p.setAttribute("fill",hue(i)); p.setAttribute("opacity","0.2");
         arcsG.appendChild(p); segs.push({path:p,start:a0,width:w});
+        if(lbl==="") continue; // "none" identifier method — no labels at all
         // Label sits at the segment midpoint by default; paint() may reposition it per
         // frame for the "edge" / "now" label modes (see P.labelPos).
         var pt=polar(rMid,a0+w/2), fs=fsMax, arcPx=w*Math.PI/180*rMid;
@@ -405,14 +408,14 @@
   // Each field maps a setting to a 0-based index in a fixed range (`c` = #values);
   // values are folded into one integer via mixed-radix, so the same FIELDS list
   // drives both pack and unpack and stays in sync.
-  var SPEEDS=[1,60], IDS=["num","alpha","animal"];
+  var SPEEDS=[1,60], IDS=["num","alpha","animal","none"];
   var FIELDS=[
     {c:19, enc:function(){return P.N-2;},        dec:function(i){P.N=i+2;}},
     {c:20, enc:function(){return P.K-1;},        dec:function(i){P.K=i+1;}},
     {c:9,  enc:function(){return P.interval-2;}, dec:function(i){P.interval=i+2;}},
     {c:20, enc:function(){return P.bursts-1;},   dec:function(i){P.bursts=i+1;}},
     {c:2,  enc:function(){return Math.max(0,SPEEDS.indexOf(P.speed));}, dec:function(i){P.speed=SPEEDS[i];}},
-    {c:3,  enc:function(){return Math.max(0,IDS.indexOf(P.idMethod));}, dec:function(i){P.idMethod=IDS[i];}},
+    {c:4,  enc:function(){return Math.max(0,IDS.indexOf(P.idMethod));}, dec:function(i){P.idMethod=IDS[i];}},
     {c:3,  enc:function(){return Math.max(0,MODES.indexOf(P.mode));}, dec:function(i){P.mode=MODES[i];}}
     // NB: circle size and dark mode are deliberately excluded — they are local
     // viewing preferences, not part of the shared config the QR encodes.
@@ -434,8 +437,12 @@
   function seedFromParams(){
     var q;try{q=new URLSearchParams(location.search);}catch(e){return;}
     if(!q.has("c")||!unpackConfig(q.get("c")))return;
-    el("N").value=P.N;el("K").value=P.K;el("I").value=P.interval;el("S").value=P.bursts;
-    el("idsel").value=P.idMethod;
+  }
+  // Force every control to reflect P, regardless of what the browser may have restored from a
+  // previous visit (bfcache / autofill). Speed and mode have their own UI sync helpers.
+  function syncUI(){
+    el("N").value=P.N; el("K").value=P.K; el("I").value=P.interval; el("S").value=P.bursts;
+    el("SZ").value=P.size; el("idsel").value=P.idMethod; el("lblpos").value=P.labelPos;
   }
 
   // ---- Dark mode: local viewing preference, persisted but never shared via QR ----
@@ -469,7 +476,7 @@
   document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!qrModal.hidden)closeQR();});
 
   seedFromParams();
-  clampDeps(); applySize(); applyLayout(); labels(); applySpeedUI(); applyModeUI();
+  clampDeps(); syncUI(); applySize(); applyLayout(); labels(); applySpeedUI(); applyModeUI();
   lastSwitch=Math.floor(Date.now()/1000*P.speed/(P.interval*60));
   paint(Date.now()/1000*P.speed); // render the correct rotated state before the first frame
   requestAnimationFrame(loop);
