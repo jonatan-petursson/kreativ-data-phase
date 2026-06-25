@@ -33,7 +33,8 @@
   .app{position:relative;min-height:100vh;display:flex;align-items:safe center;justify-content:safe center;padding:24px;overflow:auto}
   .dial{width:640px}
   .dial svg{display:block;width:100%;height:auto}
-  .rd-count{font-family:"DSEG14",var(--mono);font-size:26px;font-weight:400;fill:var(--text)}
+  .rd-count{font-family:"DSEG14",var(--mono);font-size:22px;font-weight:400;fill:var(--text)}
+  .rd-bg{opacity:.13}
   .corner-count{position:fixed;left:16px;bottom:14px;z-index:5;font-family:var(--mono);font-size:15px;color:var(--muted);font-variant-numeric:tabular-nums;pointer-events:none}
   .corner-count[hidden]{display:none}
   .rd-label{font-size:10px;letter-spacing:.16em;fill:var(--hint)}
@@ -189,7 +190,8 @@
       <g id="ptr">
         <path id="tri" fill="var(--text)"></path>
       </g>
-      <text id="count" x="200" y="158" text-anchor="middle" class="rd-count">5:00</text>
+      <text id="countbg" x="200" y="158" text-anchor="middle" class="rd-count rd-bg" aria-hidden="true">88:88</text>
+      <text id="count" x="200" y="158" text-anchor="middle" class="rd-count">00:00</text>
       <circle id="hit" cx="200" cy="190" r="78" fill="transparent" style="cursor:pointer"><title>Tap to change shape</title></circle>
     </svg>
   </div>
@@ -269,7 +271,9 @@
     tick.setAttribute("transform","rotate("+PHI+" "+CX+" "+CY+")");
     tick.setAttribute("display",P.labelPos==="now"?"none":"inline");
   }
-  function fmt(s){s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+":"+("0"+(s%60)).slice(-2);}
+  // Zero-padded MM:SS so the readout is always the same width as the "88:88" backdrop and
+  // overlays it exactly (the segment font's digits are monospaced, the colon is narrow).
+  function fmt(s){s=Math.max(0,Math.ceil(s));return ("0"+Math.floor(s/60)).slice(-2)+":"+("0"+(s%60)).slice(-2);}
 
   function paint(eff){
     var iv=P.interval*60, slot=360/P.N;
@@ -342,12 +346,13 @@
     // Timer rendered inside the circle for every mode (positioned per layout). The
     // page-corner timer is kept (paint still updates it) but disabled as dead code while
     // we experiment with the in-circle placement.
-    var cnt=el("count");
-    cnt.setAttribute("text-anchor","middle");
-    if(m==="portrait"){ cnt.setAttribute("x",CX-34); cnt.setAttribute("y",CY+10); }
-    else if(m==="full"){ cnt.setAttribute("x",CX); cnt.setAttribute("y",CY+10); }
-    else { cnt.setAttribute("x",CX); cnt.setAttribute("y",CY-32); }
-    cnt.style.display="";
+    var cx2,cy2;
+    if(m==="portrait"){ cx2=CX-44; cy2=CY+10; }
+    else if(m==="full"){ cx2=CX; cy2=CY+10; }
+    else { cx2=CX; cy2=CY-32; }
+    var cnt=el("count"), cbg=el("countbg");
+    cnt.setAttribute("x",cx2); cnt.setAttribute("y",cy2); cnt.setAttribute("text-anchor","middle"); cnt.style.display="";
+    cbg.setAttribute("x",cx2); cbg.setAttribute("y",cy2); cbg.setAttribute("text-anchor","middle"); cbg.style.display="";
     el("cornerCount").hidden=true;
     build();
   }
