@@ -114,11 +114,6 @@
   .seg-btns button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
   #mode button{font-family:var(--sans);font-size:12.5px}
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
-  .qr-btn{width:100%;font-family:var(--sans);font-size:13px;padding:9px 0;border:1px solid var(--border);
-    background:var(--accent-soft);color:var(--accent);border-radius:8px;cursor:pointer;font-weight:600;
-    display:flex;align-items:center;justify-content:center;gap:8px}
-  .qr-btn:hover{border-color:var(--accent)}
-  .qr-btn svg{width:16px;height:16px}
   .repo-link{display:flex;align-items:center;justify-content:center;gap:7px;font-size:12.5px;color:var(--hint);
     text-decoration:none;padding-top:14px;border-top:1px solid var(--border)}
   .repo-link:hover{color:var(--accent)}
@@ -146,6 +141,14 @@
     <div class="tool-row">
       <button class="gear fbtn" id="focusBtn" aria-label="Focus a section" aria-expanded="false" aria-haspopup="true">
         <span class="fic" id="focusIcon"></span>
+      </button>
+      <button class="gear" id="darkBtn" aria-label="Toggle dark mode" aria-pressed="false"></button>
+      <button class="gear" id="qrbtn" aria-label="Show QR code">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/><line x1="14" y1="14" x2="14" y2="21"/>
+          <line x1="18" y1="14" x2="18" y2="18"/><line x1="21" y1="14" x2="21" y2="21"/><line x1="18" y1="21" x2="21" y2="21"/>
+        </svg>
       </button>
       <button class="gear" id="helpBtn" aria-label="About this app" aria-haspopup="dialog">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -182,9 +185,12 @@
           <div class="rt"><span class="name">Switch every</span><span class="val" id="vI">5 min</span></div>
           <input type="range" id="I" min="2" max="10" step="1" value="5">
         </div>
-        <div class="row tog">
-          <span class="name">Evolving order</span>
-          <input type="checkbox" id="evolve">
+        <div class="row">
+          <div class="rt"><span class="name">Order</span></div>
+          <div class="seg-btns" id="order">
+            <button data-o="static">Static</button>
+            <button data-o="rotating">Rotating</button>
+          </div>
         </div>
       </div>
       <div class="grp">
@@ -200,10 +206,6 @@
         <div class="row" id="zoomRow">
           <div class="rt"><span class="name">Zoom</span><span class="val" id="vZM">1</span></div>
           <input type="range" id="ZM" min="1" max="16" step="any" value="1">
-        </div>
-        <div class="row tog">
-          <span class="name">Dark mode</span>
-          <input type="checkbox" id="dark">
         </div>
         <div class="row tog">
           <span class="name">Debug: on/off times</span>
@@ -232,19 +234,6 @@
             <button data-x="1">1&times;</button>
             <button data-x="60">60&times;</button>
           </div>
-        </div>
-      </div>
-      <div class="grp">
-        <div class="grp-h">Share</div>
-        <div class="row">
-          <button class="qr-btn" id="qrbtn" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-              <rect x="3" y="14" width="7" height="7" rx="1"/><line x1="14" y1="14" x2="14" y2="21"/>
-              <line x1="18" y1="14" x2="18" y2="18"/><line x1="21" y1="14" x2="21" y2="21"/><line x1="18" y1="21" x2="21" y2="21"/>
-            </svg>
-            Show QR code
-          </button>
         </div>
       </div>
       <a class="repo-link" href="https://github.com/jonatan-petursson/kreativ-data-phase" target="_blank" rel="noopener">
@@ -287,20 +276,13 @@
     <svg id="svg" viewBox="0 0 400 196" aria-hidden="true">
       <defs>
         <clipPath id="top"><rect id="clip" x="0" y="0" width="400" height="190"></rect></clipPath>
-        <!-- Evolving-order window clip: a screen-fixed sector centred on the now line spanning
-             the visible part of the loop. The complementary wedge at the opposite line is the
-             hidden seam where the window wraps. Recomputed per build (depends on zoom). -->
-        <clipPath id="clipNow"><path id="clipNowP"></path></clipPath>
       </defs>
       <line id="base" x1="30" y1="190" x2="370" y2="190" stroke="var(--border)" stroke-width="1"></line>
       <g id="wrap" clip-path="url(#top)">
         <circle id="surface" cx="200" cy="190" r="82" fill="none"></circle>
-        <!-- arcsCur = the continuous current order (clipped to the now-line sector);
-             arcsNext = the next loop's order, spliced into the opposite-line wedge.
-             Clips are screen-fixed; the inner groups carry the rotation transform. When the
-             evolving order is off, the clips are removed and only arcsCur is used. -->
-        <g id="arcsCurClip"><g id="arcsCur"></g></g>
-        <g id="arcsNextClip"><g id="arcsNext"></g></g>
+        <!-- The ribbon: every on-block of the 2N-turn schedule, carrying the rotation transform.
+             paint() rotates the group and truncates each block to the visible window each frame. -->
+        <g id="arcsCur"></g>
         <circle id="rimIn" cx="200" cy="190" r="83" fill="none" stroke="var(--border)" stroke-width="1"></circle>
         <circle id="rimOut" cx="200" cy="190" r="171" fill="none" stroke="var(--border)" stroke-width="1"></circle>
       </g>
@@ -324,11 +306,10 @@
   var CX=200,CY=190,R_OUT=170,R_IN=82,NS="http://www.w3.org/2000/svg";
   var reduce=false; try{reduce=matchMedia("(prefers-reduced-motion:reduce)").matches;}catch(e){}
   function el(id){return document.getElementById(id);}
-  var svg=el("svg"),arcsCurG=el("arcsCur"),arcsNextG=el("arcsNext"),ptrG=el("ptr"),countEl=el("count"),cornerEl=el("cornerCount");
-  var curClipG=el("arcsCurClip"),nextClipG=el("arcsNextClip");
+  var svg=el("svg"),arcsCurG=el("arcsCur"),ptrG=el("ptr"),countEl=el("count"),cornerEl=el("cornerCount");
   var GAP_DEG=7; // narrow seam gap at the opposite line where the loop's hidden remainder folds away
-  // Ribbon-window render state (set in buildRibbon, read by paintRibbon):
-  var ribbon=false, buildNowX=0, winW=1, visSpan=344;
+  // Ribbon-window render state (set in buildRibbon, read by paint):
+  var buildNowX=0, winW=1, visSpan=344;
   var ANIMALS=["\uD83D\uDC36","\uD83D\uDC31","\uD83D\uDC2D","\uD83D\uDC39","\uD83D\uDC30","\uD83E\uDD8A","\uD83D\uDC3B","\uD83D\uDC3C","\uD83D\uDC28","\uD83D\uDC2F","\uD83E\uDD81","\uD83D\uDC2E","\uD83D\uDC37","\uD83D\uDC38","\uD83D\uDC35","\uD83D\uDC14","\uD83D\uDC27","\uD83E\uDD86","\uD83E\uDD89","\uD83E\uDD84"];
   var MODES=["half","full","portrait"];
   var P={N:8,K:4,interval:5,speed:1,idMethod:"num",mode:"half",labelPos:"center",thick:0.9,size:100,focus:-1,solo:false,evolve:false,zoom:1};
@@ -337,6 +318,8 @@
   // _dbgKey/_dbgMetrics cache the per-loop tally (only depends on N/K/evolve, not the clock).
   var dbgOn=false,dbgRenderT=0,_dbgKey="",_dbgMetrics=null;
   var CROSSHAIR='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>';
+  var MOON='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+  var SUN='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.9" y1="4.9" x2="6.3" y2="6.3"/><line x1="17.7" y1="17.7" x2="19.1" y2="19.1"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.9" y1="19.1" x2="6.3" y2="17.7"/><line x1="17.7" y1="6.3" x2="19.1" y2="4.9"/></svg>';
 
   function polar(r,deg){var a=(deg-90)*Math.PI/180;return [CX+r*Math.cos(a),CY+r*Math.sin(a)];}
   function norm180(a){a=((a+180)%360+360)%360-180;return a;}
@@ -385,57 +368,26 @@
   }
   function holdTurns(){return 1;}    // turns each change is held — fixed at 1 (maximum mixing)
   function loopTurns(){return 2*P.N*holdTurns();}       // full loop length, in turns
-  // order[slot]=section for a given (possibly huge or negative) turn index.
-  function orderForTurn(t){var p=2*P.N; return huntRows()[((Math.floor(t/holdTurns())%p)+p)%p];}
+  // order[slot]=section for a given (possibly huge or negative) turn index. Static order is the
+  // identity every turn; rotating order walks the plain-hunting rows. Either way the schedule is
+  // 2N turns long, so the ribbon renderer and zoom behave identically for both.
+  function orderForTurn(t){if(!P.evolve)return identityPos();var p=2*P.N; return huntRows()[((Math.floor(t/holdTurns())%p)+p)%p];}
 
   function identityPos(){var p=[];for(var i=0;i<P.N;i++)p[i]=i;return p;}
-  // Draw every section's on-blocks into `group`, placing section i at schedule slot pos[i].
-  // Ring radius / colour / label stay keyed to the section index; only the angular slot is
-  // permuted. Each emitted seg/label is tagged with `grp` ("cur"=current loop, "next"=preview).
-  function drawSections(group,pos,grp){
-    var slot=360/P.N, runs=basePattern();
-    // Isolate mode: when a section is focused and "hide others" is on, draw only that ring,
-    // expanded to fill the whole annulus as one wide band.
-    var solo=(P.solo&&P.focus>=0);
-    for(var i=0;i<P.N;i++){
-      if(solo&&i!==P.focus) continue;
-      var dim=(P.focus>=0&&i!==P.focus); // de-emphasise non-focused rings (not used in solo)
-      var rOut,rIn,rMid;
-      if(solo){ rOut=R_OUT; rIn=R_IN; rMid=(R_OUT+R_IN)/2; }
-      else { var c=R_OUT-(i+0.5)*ringTh, th=ringTh*P.thick; rOut=c+th/2; rIn=c-th/2; rMid=c; }
-      var lbl=ident(i), fsMax=Math.max(6,Math.min((rOut-rIn)*0.82,solo?40:16));
-      for(var r=0;r<runs.length;r++){
-        var a0=(runs[r].start+pos[i])*slot, w=Math.min(359.4,runs[r].len*slot);
-        var p=document.createElementNS(NS,"path");
-        p.setAttribute("d",sector(a0,a0+w,rIn,rOut));
-        p.setAttribute("fill",hue(i)); p.setAttribute("opacity","0.2");
-        group.appendChild(p); segs.push({path:p,start:a0,width:w,ring:i,grp:grp});
-        if(lbl===""||solo) continue; // "none" identifier method, or isolate mode — no labels
-        // Label sits at the segment midpoint by default; paint() may reposition it per
-        // frame for the "edge" / "now" label modes (see P.labelPos).
-        var pt=polar(rMid,a0+w/2), fs=fsMax, arcPx=w*Math.PI/180*rMid;
-        if(fs>arcPx*0.72) fs=Math.max(5,arcPx*0.72);
-        var t=document.createElementNS(NS,"text");
-        t.setAttribute("x",pt[0]); t.setAttribute("y",pt[1]);
-        t.setAttribute("text-anchor","middle"); t.setAttribute("dominant-baseline","central");
-        t.setAttribute("font-size",fs.toFixed(1)); t.setAttribute("stroke-width",(fs*0.16).toFixed(2));
-        t.setAttribute("class",P.idMethod==="animal"?"id-emoji":"id-text"); t.textContent=lbl;
-        if(dim)t.setAttribute("opacity","0.35");
-        group.appendChild(t); idLabels.push({el:t,tx:pt[0],ty:pt[1],a0:a0,w:w,rMid:rMid,fs:fs,grp:grp});
-      }
-    }
-  }
-
-  // Build a window of the evolving loop as a ribbon: draw every turn that overlaps the window
+  // Build a window of the schedule as a ribbon: draw every turn that overlaps the window
   // (one continuous, smooth schedule — order changes ride along in the gaps, no jumps), clipped
-  // to the visible sector. buildNowX/winW/visSpan are recorded for paintRibbon's rotation.
+  // to the visible sector. buildNowX/winW/visSpan are recorded for paint()'s rotation.
   function buildRibbon(){
     var iv=P.interval*60, eff=Date.now()/1000*P.speed, N=P.N, runs=basePattern();
     buildNowX=eff/iv; lastLoopG=Math.floor(buildNowX/N);
     var V=Math.max(1,Math.min(P.zoom,loopTurns()));
     winW=V*N;
-    var seam=(V>=loopTurns());            // whole loop shown → ends meet → seamless, no wedge
-    visSpan=seam?360:360-GAP_DEG;
+    // The schedule repeats every `period` turns (1 for static identity, 2N for rotating). When the
+    // window spans a whole number of periods its ends meet → seamless, no seam wedge. (Static's
+    // default zoom of 1 turn is one whole period, so it stays a clean full ring.)
+    var period=P.evolve?loopTurns():1, k=V/period;
+    var seamless=Math.abs(k-Math.round(k))<=1e-6;
+    visSpan=seamless?360:360-GAP_DEG;
     // Turns overlapping the window, with slop for the slide before the next rebuild + wrapping blocks.
     var lo=Math.floor((buildNowX-winW/2-P.K-1)/N)-1, hi=Math.floor((buildNowX+winW/2+N+1)/N)+1;
     // Collect on-blocks per ring across the overlapping turns, then merge any that abut. When a
@@ -490,27 +442,18 @@
       }
     }
     arcsCurG.appendChild(labelLayer); // above all segment paths
-    // No clip: paintRibbon truncates every block's angular span to the visible window, so the
-    // loop's hidden remainder simply stops at the seam (a mask wide enough to swallow a
-    // half-circle block would also cut a wedge to the centre). visSpan leaves a small gap at the
-    // opposite line where that remainder is folded away; the whole-loop zoom closes it (seamless).
-    curClipG.removeAttribute("clip-path");
+    // No clip: paint() truncates every block's angular span to the visible window, so the
+    // schedule's hidden remainder simply stops at the seam. visSpan leaves a small gap at the
+    // opposite line where a partial period is folded away; a whole-period window closes it.
   }
 
   function build(){
-    arcsCurG.innerHTML=""; arcsNextG.innerHTML=""; segs=[]; idLabels=[];
+    arcsCurG.innerHTML=""; segs=[]; idLabels=[];
     ringTh=(R_OUT-R_IN)/P.N;
     lastLoopG=loopIndex(Date.now()/1000*P.speed); // so loop() only rebuilds on turn change
-    // Evolving order renders the ribbon-window (buildRibbon handles isolate mode too, so the
-    // focused ring keeps its evolving schedule instead of snapping back to the static wheel).
-    // Otherwise it's the classic single-turn wheel.
-    ribbon=P.evolve;
-    nextClipG.removeAttribute("clip-path");
-    if(ribbon){ buildRibbon(); }
-    else {
-      curClipG.removeAttribute("clip-path");
-      drawSections(arcsCurG,identityPos(),"cur");
-    }
+    // One unified renderer: the ribbon window over the 2N-turn schedule (identity order for
+    // static, plain-hunting for rotating). buildRibbon handles isolate mode and zoom for both.
+    buildRibbon();
     el("tri").setAttribute("d","M"+(CX-8)+" "+(CY-R_OUT-15)+" L"+(CX+8)+" "+(CY-R_OUT-15)+" L"+CX+" "+(CY-R_OUT-2)+" Z");
     // The "now" line spans the whole segment area (outer rim to inner rim), rotated to the
     // pointer angle (PHI). It is hidden in the "now" label mode, where labels occupy it.
@@ -526,11 +469,11 @@
   // overlays it exactly (the segment font's digits are monospaced, the colon is narrow).
   function fmt(s){s=Math.max(0,Math.ceil(s));var m=Math.floor(s/60);return (m<10?"0"+m:""+m)+":"+("0"+(s%60)).slice(-2);}
 
-  // Paint for the evolving ribbon: rotate the built window (it's a pure rotation between
-  // rebuilds), light up whichever blocks straddle the now line, keep labels upright. Active
-  // state is read straight from schedule time (a block is active while nowX is inside it), so
-  // there's no angular aliasing from the off-window margin blocks.
-  function paintRibbon(eff){
+  // Paint the ribbon window: rotate it (a pure rotation between rebuilds), light up whichever
+  // blocks straddle the now line, keep labels upright. Active state is read straight from schedule
+  // time (a block is active while nowX is inside it), so there's no angular aliasing from the
+  // off-window margin blocks. Drives both static and rotating order.
+  function paint(eff){
     var iv=P.interval*60, nowX=eff/iv, realT=eff/P.speed, rem=iv-(eff%iv);
     var blinkOff=!reduce && rem<=10 && (Math.floor(realT*4)%2===1);
     var drift=(nowX-buildNowX)/winW*visSpan, rot=PHI-drift;
@@ -601,93 +544,18 @@
     var t=fmt(remSec); countEl.textContent=t; cornerEl.textContent=t;
   }
 
-  function paint(eff){
-    if(ribbon){ paintRibbon(eff); return; }
-    var iv=P.interval*60, slot=360/P.N;
-    var pointer=((eff/iv*slot)%360+360)%360;
-    // Blink the active segments during the final 10s of the interval as a switch warning.
-    // Driven by real wall-clock time (eff/speed) so the ~2Hz rate is steady at any speed.
-    var rem=iv-(eff%iv), realT=eff/P.speed;
-    var blinkOff=!reduce && rem<=10 && (Math.floor(realT*4)%2===1);
-    // PHI is where the pointer sits (top for half/full, side for portrait); the wheel
-    // rotates so the active arc-angle lands under it, and labels counter-rotate upright.
-    // Both arc groups share the same rotation; the screen-fixed sector clips keep the
-    // continuous current order around the now line and the next-order splice at the opposite line.
-    var rot="rotate("+(PHI-pointer).toFixed(3)+" "+CX+" "+CY+")";
-    arcsCurG.setAttribute("transform",rot); arcsNextG.setAttribute("transform",rot);
-    var focusLive=false, focusBnd=360; // nearest upcoming state-change of the focused ring, in degrees
-    for(var j=0;j<segs.length;j++){
-      var s=segs[j], delta=((pointer-s.start)%360+360)%360, op;
-      if(delta<s.width){var ramp=Math.min(6,s.width/2),edge=Math.min(delta,s.width-delta),k=ramp>0?Math.min(1,edge/ramp):1;
-        // Only the segment about to end blinks — the one whose trailing edge crosses the
-        // now line at the next switch (within one slot of fully passing it).
-        var ending=delta>=s.width-slot;
-        op=blinkOff&&ending?0.18:(0.55+0.45*k);
-        if(P.focus>=0&&s.ring===P.focus&&s.grp==="cur")focusLive=true;}
-      else op=0.2;
-      if(P.focus>=0&&s.ring!==P.focus)op*=0.3; // de-emphasise everything but the focused ring
-      // For the focused ring, track the nearest on→off / off→on boundary ahead of the now line.
-      // Driven by the current loop only (the "next" group is just a preview).
-      if(P.focus>=0&&s.ring===P.focus&&s.grp==="cur"){
-        var bIn=((s.start-pointer)%360+360)%360, bOut=((s.start+s.width-pointer)%360+360)%360;
-        if(bIn>0&&bIn<focusBnd)focusBnd=bIn; if(bOut>0&&bOut<focusBnd)focusBnd=bOut;
-      }
-      s.path.setAttribute("opacity",op.toFixed(3));
-    }
-    if(P.focus>=0)setFocusLive(focusLive);
-    // Label placement: "center" is static (set in build); "now" pins the label to the
-    // pointer line; "edge" keeps the label inside both the visible window and its own
-    // segment, each pulled in by a margin (~the label's half-height) so the label never sits
-    // on the cut and slides out a margin ahead of the segment's edge instead of riding it.
-    var pr=(pointer-PHI).toFixed(3), dyn=(P.labelPos!=="center"), full=(P.mode==="full");
-    for(var m=0;m<idLabels.length;m++){var L=idLabels[m];
-      if(dyn){
-        var ang;
-        if(P.labelPos==="now"){
-          ang=pointer; // pinned to the now line at all times, regardless of the segment
-        } else { // edge: margin off the window edge and off the segment edge (capped to the
-                 // segment's half-width so a narrow segment just keeps the label centred). Full
-                 // shape shows the whole circle (no cut), so drop the window clamp — otherwise
-                 // labels hitch at ±180 where the half/portrait cut would be.
-          var sc=norm180(L.a0+L.w/2-pointer);
-          var mg=(L.fs*0.7/L.rMid)*180/Math.PI, ve=full?1e9:(90-mg), sm=Math.min(mg,L.w/2);
-          var lo=Math.max(sc-L.w/2+sm,Math.min(sc+L.w/2-sm,Math.max(-ve,Math.min(ve,sc))));
-          ang=pointer+lo;
-        }
-        var pt=polar(L.rMid,ang); L.tx=pt[0]; L.ty=pt[1];
-        L.el.setAttribute("x",L.tx); L.el.setAttribute("y",L.ty);
-      }
-      L.el.setAttribute("transform","rotate("+pr+" "+L.tx+" "+L.ty+")");}
-    var sc=reduce?1:(1+pulse*0.5),px=CX,py=CY-R_OUT-8;
-    ptrG.setAttribute("transform","rotate("+PHI+" "+CX+" "+CY+") translate("+px+" "+py+") scale("+sc.toFixed(3)+") translate("+(-px)+" "+(-py)+")");
-    // In focus mode the countdown tracks the focused section's own next switch (it may stay
-    // on/off across several global intervals); otherwise it's the global interval remaining.
-    var remSec=(P.focus>=0)?focusBnd/slot*iv:iv-(eff%iv);
-    var t=fmt(remSec); countEl.textContent=t; cornerEl.textContent=t;
-  }
   // ---- Debug: read each player's schedule directly (no timing — it's a pure function of eff) ----
   // Every ring is the same base pattern rotated, so all get K on-slots per turn; the only thing
   // that varies per player is *when*. So for each we just read: on/off now, and slots to next flip.
   function scheduleState(eff){
-    var iv=P.interval*60, st=[], i;
+    var iv=P.interval*60, nowX=eff/iv, st=[], i;
     for(i=0;i<P.N;i++)st[i]={on:false,next:Infinity};
-    if(ribbon){
-      var nowX=eff/iv;
-      for(i=0;i<segs.length;i++){var s=segs[i],o=st[s.ring];
-        if(nowX>=s.xs&&nowX<s.xs+s.len)o.on=true;
-        var dIn=s.xs-nowX, dOut=s.xs+s.len-nowX;             // slots until this block starts / ends
-        if(dIn>0&&dIn<o.next)o.next=dIn; if(dOut>0&&dOut<o.next)o.next=dOut;
-      }
-      for(i=0;i<P.N;i++)st[i].next*=iv;                      // slots → seconds
-    } else {
-      var slot=360/P.N, ptr=((eff/iv*slot)%360+360)%360;
-      for(i=0;i<segs.length;i++){var s2=segs[i]; if(s2.grp==="next")continue; var o2=st[s2.ring];
-        if(((ptr-s2.start)%360+360)%360<s2.width)o2.on=true;
-        var bIn=((s2.start-ptr)%360+360)%360, bOut=((s2.start+s2.width-ptr)%360+360)%360;
-        if(bIn>0&&bIn<o2.next)o2.next=bIn; if(bOut>0&&bOut<o2.next)o2.next=bOut;
-      }
-      for(i=0;i<P.N;i++)st[i].next=st[i].next/slot*iv;        // degrees → seconds
+    for(i=0;i<segs.length;i++){var s=segs[i],o=st[s.ring];
+      if(nowX>=s.xs&&nowX<s.xs+s.len)o.on=true;
+      var dIn=s.xs-nowX, dOut=s.xs+s.len-nowX;               // slots until this block starts / ends
+      if(dIn>0&&dIn<o.next)o.next=dIn; if(dOut>0&&dOut<o.next)o.next=dOut;
     }
+    for(i=0;i<P.N;i++)st[i].next*=iv;                        // slots → seconds
     return st;
   }
   // MEASURE, straight off the real schedule (orderForTurn + basePattern), over a full loop:
@@ -695,11 +563,11 @@
   // timing, no re-derivation — we mark each section's actual on-slots (blocks wrap the seamless loop)
   // and read the mask. Cached by N/K/evolve, since none of it depends on the clock.
   function loopMetrics(){
-    var key=P.N+"/"+P.K+"/"+(ribbon?"e":"s");
+    var key=P.N+"/"+P.K+"/"+(P.evolve?"e":"s");
     if(key===_dbgKey) return _dbgMetrics;
-    var N=P.N, L=ribbon?loopTurns():1, runs=basePattern(), span=L*N, mask=[], i,t,sl,ri,k;
+    var N=P.N, L=loopTurns(), runs=basePattern(), span=L*N, mask=[], i,t,sl,ri,k;
     for(i=0;i<N;i++)mask[i]=new Uint8Array(span);
-    for(t=0;t<L;t++){var order=ribbon?orderForTurn(t):identityPos();
+    for(t=0;t<L;t++){var order=orderForTurn(t);
       for(sl=0;sl<N;sl++){var sec=order[sl];
         for(ri=0;ri<runs.length;ri++){var start=t*N+runs[ri].start+sl, len=runs[ri].len;
           for(k=0;k<len;k++)mask[sec][(start+k)%span]=1;}}}   // %span: on-blocks wrap the seamless loop
@@ -725,15 +593,16 @@
     }
     var uni=(M.mn===M.mx&&M.wmn===M.wmx);
     var verdict=uni?'uniform ✓':('VARIES ⚠ on '+M.mn+'–'+M.mx+', wait '+M.wmn+'–'+M.wmx);
-    el("dbgPanel").innerHTML='<h4>'+P.K+' of '+P.N+' &middot; '+(ribbon?M.L+'-turn loop':'per turn')+' &middot; '+verdict+'</h4>'+
+    el("dbgPanel").innerHTML='<h4>'+P.K+' of '+P.N+' &middot; '+(P.evolve?M.L+'-turn loop':'per turn')+' &middot; '+verdict+'</h4>'+
       '<table><tr class="off"><td></td><td></td><td>now</td><td>next</td><td>on</td><td>%</td><td>wait</td></tr>'+rows+'</table>';
   }
 
   function loop(){
     var eff=Date.now()/1000*P.speed, iv=P.interval*60, sw=Math.floor(eff/iv);
     if(sw!==lastSwitch){lastSwitch=sw;pulse=0.5;}
-    // Advance the evolving order at each loop boundary (one full revolution = N intervals).
-    if(P.evolve){var g=loopIndex(eff); if(g!==lastLoopG)build();}
+    // Rebuild the ribbon window at each turn boundary (one revolution = N intervals) so it keeps
+    // scrolling; for rotating order this also advances the plain-hunting order to the next turn.
+    var g=loopIndex(eff); if(g!==lastLoopG)build();
     var now=performance.now(), dt=lastT?Math.min(0.1,(now-lastT)/1000):0; lastT=now;
     if(pulse>0)pulse=Math.max(0,pulse-dt*1.8);
     paint(eff);
@@ -773,8 +642,6 @@
     cnt.setAttribute("x",cx2); cnt.setAttribute("y",cy2); cnt.setAttribute("text-anchor","middle"); cnt.style.display="";
     cbg.setAttribute("x",cx2); cbg.setAttribute("y",cy2); cbg.setAttribute("text-anchor","middle"); cbg.style.display="";
     el("cornerCount").hidden=true;
-    // The evolving-order window clip (clipNow) is recomputed per build (it depends on the
-    // current zoom), so nothing to set here.
     build();
   }
 
@@ -799,19 +666,21 @@
   el("N").addEventListener("input",function(){P.N=+this.value;clampDeps();P.K=+el("K").value;if(P.focus>=P.N)P.focus=-1;labels();build();updateFocusIcon();});
   el("K").addEventListener("input",function(){P.K=+this.value;clampDeps();labels();build();});
   el("I").addEventListener("input",function(){P.interval=+this.value;labels();});
-  // Evolving order + its zoom controls (build() reads P.evolve/zoom/full).
-  // Zoom is only a window into the evolving loop, so it's disabled when evolving order is off.
-  function zoomEnabled(){var on=P.evolve;el("ZM").disabled=!on;el("zoomRow").classList.toggle("off",!on);}
-  el("evolve").addEventListener("change",function(){P.evolve=this.checked;zoomEnabled();build();});
+  // Order: Static (fixed identity schedule) vs Rotating (evolving plain-hunting) — segmented like
+  // Shape. Both drive the same ribbon renderer over a 2N-turn schedule, so zoom applies to either.
+  function applyOrderUI(){var kids=el("order").children;
+    for(var i=0;i<kids.length;i++)kids[i].className=((kids[i].getAttribute("data-o")==="rotating")===P.evolve)?"on":"";}
+  function setOrder(o){P.evolve=(o==="rotating");applyOrderUI();build();}
+  el("order").addEventListener("click",function(e){var b=e.target.closest("button");if(b)setOrder(b.getAttribute("data-o"));});
   el("ZM").addEventListener("input",function(){P.zoom=+this.value;labels();build();});
 
-  // ---- Pinch / ⌘-wheel gesture → Zoom (turns shown), only while Evolving order is on ----
+  // ---- Pinch / ⌘-wheel gesture → Zoom (turns shown) ----
   // Spreading fingers (scale>1) zooms IN → fewer turns; pinching together zooms OUT → more
   // turns. ZOOM_GESTURE_POWER is the single knob for how strongly a gesture moves the zoom.
   var ZOOM_GESTURE_POWER=1.6;
   function setZoom(z){var lt=loopTurns();P.zoom=Math.max(1,Math.min(lt,z));el("ZM").value=P.zoom;labels();build();}
   // Apply a cumulative pinch `scale` against the zoom captured when the gesture began.
-  function pinchZoom(base,scale){if(P.evolve)setZoom(base/Math.pow(scale,ZOOM_GESTURE_POWER));}
+  function pinchZoom(base,scale){setZoom(base/Math.pow(scale,ZOOM_GESTURE_POWER));}
   function touchDist(t){var a=t[0],b=t[1];return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);}
   var pinch=null,gActive=false,gBase=1;
   // iOS Safari pinch (non-standard gesture events give a clean cumulative scale factor).
@@ -823,7 +692,7 @@
   document.addEventListener("touchmove",function(e){if(e.touches.length===2){e.preventDefault();if(!gActive&&pinch)pinchZoom(pinch.z0,touchDist(e.touches)/pinch.d0);}},{passive:false});
   document.addEventListener("touchend",function(e){if(e.touches.length<2)pinch=null;});
   // Trackpad pinch and ctrl/⌘+wheel on desktop. deltaY<0 (spread / scroll up) → zoom in.
-  window.addEventListener("wheel",function(e){if(e.ctrlKey){e.preventDefault();if(P.evolve)pinchZoom(P.zoom,Math.exp(-e.deltaY/300));}},{passive:false});
+  window.addEventListener("wheel",function(e){if(e.ctrlKey){e.preventDefault();pinchZoom(P.zoom,Math.exp(-e.deltaY/300));}},{passive:false});
   // Re-fit when the viewport changes (resize, rotate, browser-chrome show/hide).
   window.addEventListener("resize",applySize);
   if(window.visualViewport)window.visualViewport.addEventListener("resize",applySize);
@@ -927,19 +796,23 @@
   function syncUI(){
     el("N").value=P.N; el("K").value=P.K; el("I").value=P.interval;
     el("idsel").value=P.idMethod; el("lblpos").value=P.labelPos;
-    el("solo").checked=P.solo; el("evolve").checked=P.evolve;
-    el("ZM").value=P.zoom; zoomEnabled();
+    el("solo").checked=P.solo; applyOrderUI();
+    el("ZM").value=P.zoom;
   }
 
   // ---- Dark mode: local viewing preference, persisted but never shared via QR ----
-  var darkChk=el("dark"),root=document.documentElement,storedTheme=null;
+  var darkBtn=el("darkBtn"),root=document.documentElement,storedTheme=null;
   try{storedTheme=localStorage.getItem("pw-theme");}catch(e){}
   function sysDark(){try{return matchMedia("(prefers-color-scheme:dark)").matches;}catch(e){return false;}}
   if(storedTheme==="dark"||storedTheme==="light")root.setAttribute("data-theme",storedTheme);
-  darkChk.checked=storedTheme?(storedTheme==="dark"):sysDark();
-  darkChk.addEventListener("change",function(){
-    var v=this.checked?"dark":"light";root.setAttribute("data-theme",v);
+  var darkOn=storedTheme?(storedTheme==="dark"):sysDark();
+  // Button shows a sun while dark (tap to go light) and a moon while light (tap to go dark).
+  function updateDarkIcon(){darkBtn.innerHTML=darkOn?SUN:MOON;darkBtn.setAttribute("aria-pressed",String(darkOn));}
+  updateDarkIcon();
+  darkBtn.addEventListener("click",function(){
+    darkOn=!darkOn;var v=darkOn?"dark":"light";root.setAttribute("data-theme",v);
     try{localStorage.setItem("pw-theme",v);}catch(e){}
+    updateDarkIcon();
   });
 
   // ---- Debug on/off-time overlay: local-only, always starts off (ignore any restored check state) ----
