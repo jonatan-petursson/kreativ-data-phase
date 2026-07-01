@@ -134,11 +134,11 @@
   .info-card a.inline:hover{text-decoration:underline}
 </style>
 
-<div class="app">
+<div class="app" id="app">
   <h1 class="sr-only">Phase Wheel</h1>
 
   <div class="tools" id="tools">
-    <div class="tool-row">
+    <div class="tool-row" id="toolRow">
       <button class="gear fbtn" id="focusBtn" aria-label="Focus a section" aria-expanded="false" aria-haspopup="true">
         <span class="fic" id="focusIcon"></span>
       </button>
@@ -645,17 +645,22 @@
     build();
   }
 
+  // Vertical space the top-right button bar occupies (its on-screen bottom + a small gap).
+  // The dial is fitted and centred in the region *below* this so it doesn't sit under the bar.
+  function topReserve(){return Math.max(12,el("toolRow").getBoundingClientRect().bottom+8);}
   // Largest dial width that fits the viewport without scrolling, for the current mode's
   // viewBox aspect (height = width / aspect must also fit). P.size is a percentage of it, so
-  // 100% fills the screen on any display and the dial can never exceed it.
+  // 100% fills the screen on any display and the dial can never exceed it. Vertical budget
+  // excludes the button bar so the wheel centres in the space beneath it.
   function fitMax(){
-    var vp=window.visualViewport, pad=16;
+    var vp=window.visualViewport, pad=16, top=topReserve();
     var vw=(vp?vp.width:document.documentElement.clientWidth)-pad*2;
-    var vh=(vp?vp.height:document.documentElement.clientHeight)-pad*2;
+    var vh=(vp?vp.height:document.documentElement.clientHeight)-top-pad;
     var ar=P.mode==="full"?1:(P.mode==="portrait"?232/400:400/208); // viewBox width/height
     return Math.max(120,Math.min(vw,vh*ar));
   }
-  function applySize(){el("dial").style.width=Math.round(fitMax()*P.size/100)+"px";}
+  // Reserve the bar's height as top padding so the flex centring happens below it.
+  function applySize(){el("app").style.paddingTop=Math.round(topReserve())+"px";el("dial").style.width=Math.round(fitMax()*P.size/100)+"px";}
 
   function clampDeps(){
     var kmax=Math.max(1,P.N-1); // never all-on: off>=1 keeps at least one gap, so no ring ever self-overlaps
