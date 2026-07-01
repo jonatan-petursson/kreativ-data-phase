@@ -66,6 +66,8 @@
   .gear{width:42px;height:42px;border-radius:11px;border:1px solid var(--border);background:var(--surface);
         color:var(--text);display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow)}
   .gear:hover{border-color:var(--muted)}
+  /* Stopwatch button while a run is active. */
+  .gear.running{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
   .tool-row{display:flex;gap:10px}
   /* Focus button: shows a crosshair when idle, or the focused section's label glyph. */
   .fbtn .fic{display:grid;place-items:center;width:20px;height:20px}
@@ -139,6 +141,12 @@
 
   <div class="tools" id="tools">
     <div class="tool-row" id="toolRow">
+      <button class="gear" id="startBtn" aria-label="Start / reset" aria-pressed="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="13" r="8"/><line x1="12" y1="13" x2="12" y2="9"/>
+          <line x1="9" y1="2" x2="15" y2="2"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="18.4" y1="6.6" x2="20" y2="5"/>
+        </svg>
+      </button>
       <button class="gear fbtn" id="focusBtn" aria-label="Focus a section" aria-expanded="false" aria-haspopup="true">
         <span class="fic" id="focusIcon"></span>
       </button>
@@ -317,6 +325,12 @@
   // Debug overlay state (local-only, not in P/QR). dbgRenderT throttles the DOM repaint;
   // _dbgKey/_dbgMetrics cache the per-loop tally (only depends on N/K/evolve, not the clock).
   var dbgOn=false,dbgRenderT=0,_dbgKey="",_dbgMetrics=null;
+  // "Start" (the one stateful bit): startX is the slot position captured when the stopwatch is
+  // pressed. While set, blocks that began at/before it are hidden — a clean start that clears
+  // everything already in flight — except the single most-recently-started block (keepXs), which
+  // stays. As the wheel turns, each ring's next block (xs>=startX) reappears at the far seam.
+  // Runtime-only: never persisted, never encoded in the URL.
+  var startX=null,keepXs=null;
   var CROSSHAIR='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>';
   var MOON='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
   var SUN='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.9" y1="4.9" x2="6.3" y2="6.3"/><line x1="17.7" y1="17.7" x2="19.1" y2="19.1"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.9" y1="19.1" x2="6.3" y2="17.7"/><line x1="17.7" y1="6.3" x2="19.1" y2="4.9"/></svg>';
@@ -486,6 +500,7 @@
     var loA=drift-visSpan/2, hiA=drift+visSpan/2;
     for(var j=0;j<segs.length;j++){
       var s=segs[j], a0=(s.xs-buildNowX)/winW*visSpan, a1=a0+s.len/winW*visSpan;
+      if(segIgnored(s.xs)){ s.path.setAttribute("display","none"); continue; }   // cleared by Start
       var ca0=a0<loA?loA:a0, ca1=a1>hiA?hiA:a1;   // clip the block's angular span to the window
       if(ca1-ca0<=0.05){ s.path.setAttribute("display","none"); continue; }
       s.path.setAttribute("display","inline");
@@ -508,6 +523,7 @@
     var lr=(-rot).toFixed(3), dyn=(P.labelPos!=="center"), atNow=(P.labelPos==="now"), seen={};   // counter-rotate labels so glyphs stay upright
     var full=(P.mode==="full"), seamless=(visSpan>=360);   // seamless = whole loop shown (no seam gap)
     for(var m=0;m<idLabels.length;m++){var L=idLabels[m];
+      if(segIgnored(L.xs)){L.el.setAttribute("display","none");continue;}   // cleared by Start
       // "now": pin one label per ring stationary on the now line (a section legend, like the
       // classic wheel). A block-frame angle of `drift` lands exactly on the now line after the
       // group's rotation, so the glyph doesn't drift as blocks scroll under it. Hide the ring's
@@ -550,7 +566,7 @@
   function scheduleState(eff){
     var iv=P.interval*60, nowX=eff/iv, st=[], i;
     for(i=0;i<P.N;i++)st[i]={on:false,next:Infinity};
-    for(i=0;i<segs.length;i++){var s=segs[i],o=st[s.ring];
+    for(i=0;i<segs.length;i++){var s=segs[i]; if(segIgnored(s.xs))continue; var o=st[s.ring];
       if(nowX>=s.xs&&nowX<s.xs+s.len)o.on=true;
       var dIn=s.xs-nowX, dOut=s.xs+s.len-nowX;               // slots until this block starts / ends
       if(dIn>0&&dIn<o.next)o.next=dIn; if(dOut>0&&dOut<o.next)o.next=dOut;
@@ -668,14 +684,14 @@
     var lt=loopTurns(); el("ZM").max=lt; if(P.zoom>lt){P.zoom=lt;el("ZM").value=lt;}
   }
   function labels(){el("vN").textContent=P.N;el("vK").textContent=P.K;el("vI").textContent=P.interval+" min";el("vZM").textContent=(P.zoom>=loopTurns())?"all":(P.zoom%1?P.zoom.toFixed(1):P.zoom);}
-  el("N").addEventListener("input",function(){P.N=+this.value;clampDeps();P.K=+el("K").value;if(P.focus>=P.N)P.focus=-1;labels();build();updateFocusIcon();});
-  el("K").addEventListener("input",function(){P.K=+this.value;clampDeps();labels();build();});
-  el("I").addEventListener("input",function(){P.interval=+this.value;labels();});
+  el("N").addEventListener("input",function(){clearStart();P.N=+this.value;clampDeps();P.K=+el("K").value;if(P.focus>=P.N)P.focus=-1;labels();build();updateFocusIcon();});
+  el("K").addEventListener("input",function(){clearStart();P.K=+this.value;clampDeps();labels();build();});
+  el("I").addEventListener("input",function(){clearStart();P.interval=+this.value;labels();});
   // Order: Static (fixed identity schedule) vs Rotating (evolving plain-hunting) — segmented like
   // Shape. Both drive the same ribbon renderer over a 2N-turn schedule, so zoom applies to either.
   function applyOrderUI(){var kids=el("order").children;
     for(var i=0;i<kids.length;i++)kids[i].className=((kids[i].getAttribute("data-o")==="rotating")===P.evolve)?"on":"";}
-  function setOrder(o){P.evolve=(o==="rotating");applyOrderUI();build();}
+  function setOrder(o){clearStart();P.evolve=(o==="rotating");applyOrderUI();build();}
   el("order").addEventListener("click",function(e){var b=e.target.closest("button");if(b)setOrder(b.getAttribute("data-o"));});
   el("ZM").addEventListener("input",function(){P.zoom=+this.value;labels();build();});
 
@@ -703,7 +719,7 @@
   if(window.visualViewport)window.visualViewport.addEventListener("resize",applySize);
   el("idsel").addEventListener("change",function(){P.idMethod=this.value;build();updateFocusIcon();});
   el("lblpos").addEventListener("change",function(){P.labelPos=this.value;build();});
-  function setSpeed(b){P.speed=+b.getAttribute("data-x");var kids=el("speed").children;
+  function setSpeed(b){clearStart();P.speed=+b.getAttribute("data-x");var kids=el("speed").children;
     for(var i=0;i<kids.length;i++)kids[i].className=kids[i]===b?"on":"";}
   el("speed").addEventListener("click",function(e){var b=e.target.closest("button");if(b)setSpeed(b);});
   // Highlight the speed button matching P.speed; fall back to 1x if none match.
@@ -819,6 +835,23 @@
     try{localStorage.setItem("pw-theme",v);}catch(e){}
     updateDarkIcon();
   });
+
+  // ---- Start / reset: press to clear everything already running, then let the wheel ramp back
+  // up as each ring's next block crosses the far (halfway) seam; press again to return to normal.
+  // Local runtime state only — not persisted, not shared via QR. ----
+  var startBtn=el("startBtn");
+  function segIgnored(xs){return startX!=null&&xs<startX&&xs!==keepXs;}
+  function setStarted(on){
+    if(on){
+      var nowX=Date.now()/1000*P.speed/(P.interval*60), best=null;
+      for(var i=0;i<segs.length;i++){var x=segs[i].xs; if(x<=nowX&&(best==null||x>best))best=x;}
+      startX=nowX; keepXs=best;               // keep only the most-recently-started block
+    } else { startX=null; keepXs=null; }
+    startBtn.classList.toggle("running",on); startBtn.setAttribute("aria-pressed",String(on));
+  }
+  // Schedule-defining controls re-anchor the slot grid, so a running start no longer maps — reset it.
+  function clearStart(){if(startX!=null)setStarted(false);}
+  startBtn.addEventListener("click",function(){setStarted(startX==null);});
 
   // ---- Debug on/off-time overlay: local-only, always starts off (ignore any restored check state) ----
   el("dbg").checked=false; dbgOn=false; el("dbgPanel").hidden=true;
