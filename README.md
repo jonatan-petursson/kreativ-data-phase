@@ -22,13 +22,21 @@ Open the settings (the gear, top-right) to shape the rotation for your group:
 - **Switch every** — how long each turn lasts before the group rotates, in
   minutes. The active segments blink during the final 10 seconds as a heads-up
   that a swap is coming.
-- **Splits** — whether the active players sit together in one block on the wheel
-  or are broken into several groups spread around it.
+- **Evolving order** — when on, the rotation never settles into the same sequence.
+  Instead of one repeating turn, the schedule becomes a single long, seam-free loop in
+  which sections gradually weave past one another (using *plain hunting*, the pattern
+  bell-ringers use), so that over the loop **everyone gets a turn alongside everyone
+  else**. The wheel shows a moving **window** onto this loop; the rest is folded away
+  behind a **second, dashed line** opposite the now line. The order is derived from the
+  clock, so every synced device evolves identically.
+  - **Mixing** — temperature: how fast the order reshuffles (how often the weave steps).
+  - **Zoom** / **Show whole loop** — widen the window to see more of the
+    loop at once; at full zoom the entire woven loop is shown as a static map. You can
+    also pinch (touch / trackpad) or ⌘-scroll to zoom. *(These two are local viewing
+    controls and aren't shared in the QR.)*
 
 ## Making it readable across the room
 
-- **Circle size** — scale the dial. You can also pinch (touch / trackpad) or
-  ⌘-scroll to zoom.
 - **Shape** — `Half`, `Full`, or `Portrait`, to fit whatever screen you're on.
   Tapping the centre of the dial cycles through the shapes too.
 - **Identifier** — label sections with Numbers, Letters, Animals, or nothing.
@@ -40,7 +48,8 @@ Open the settings (the gear, top-right) to shape the rotation for your group:
 ## Sharing a setup
 
 Tap **Show QR code** to get a QR (and link) that encodes the whole rotation
-config — sections, active count, interval, splits, speed, identifier, and shape.
+config — sections, active count, interval, evolving order and its mixing,
+speed, identifier, and shape.
 Anyone who scans it lands on the same wheel, already configured. All the wheels
 that have the same settings are automatically synced as long as everyones clocks
 are the same.
