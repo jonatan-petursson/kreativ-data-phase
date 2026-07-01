@@ -683,8 +683,12 @@
     el("K").max=kmax; if(P.K>kmax){P.K=kmax;el("K").value=kmax;}
     var lt=loopTurns(); el("ZM").max=lt; if(P.zoom>lt){P.zoom=lt;el("ZM").value=lt;}
   }
+  // Zoom as a fraction of the loop (0..1, where 1 = "all"). Preserved across section-count changes
+  // so the window keeps covering the same proportion of the loop rather than a fixed turn count.
+  function zoomFrac(){return P.zoom/loopTurns();}
+  function setZoomFrac(f){var lt=loopTurns();P.zoom=Math.max(1,Math.min(lt,f*lt));el("ZM").value=P.zoom;}
   function labels(){el("vN").textContent=P.N;el("vK").textContent=P.K;el("vI").textContent=P.interval+" min";el("vZM").textContent=(P.zoom>=loopTurns())?"all":(P.zoom%1?P.zoom.toFixed(1):P.zoom);}
-  el("N").addEventListener("input",function(){clearStart();P.N=+this.value;clampDeps();P.K=+el("K").value;if(P.focus>=P.N)P.focus=-1;labels();build();updateFocusIcon();});
+  el("N").addEventListener("input",function(){clearStart();var f=zoomFrac();P.N=+this.value;clampDeps();setZoomFrac(f);P.K=+el("K").value;if(P.focus>=P.N)P.focus=-1;labels();build();updateFocusIcon();});
   el("K").addEventListener("input",function(){clearStart();P.K=+this.value;clampDeps();labels();build();});
   el("I").addEventListener("input",function(){clearStart();P.interval=+this.value;labels();});
   // Order: Static (fixed identity schedule) vs Rotating (evolving plain-hunting) — segmented like
@@ -889,7 +893,7 @@
     if(!qrModal.hidden)closeQR(); if(!helpModal.hidden)closeHelp();});
 
   seedFromParams();
-  clampDeps(); syncUI(); applySize(); applyLayout(); labels(); applySpeedUI(); applyModeUI(); updateFocusIcon();
+  clampDeps(); setZoomFrac(0.5); syncUI(); applySize(); applyLayout(); labels(); applySpeedUI(); applyModeUI(); updateFocusIcon();
   lastSwitch=Math.floor(Date.now()/1000*P.speed/(P.interval*60));
   paint(Date.now()/1000*P.speed); // render the correct rotated state before the first frame
   requestAnimationFrame(loop);
